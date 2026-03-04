@@ -1,7 +1,7 @@
 {
-  "productName": "cndiff",
+  "productName": "gitq",
   "version": "0.1.0",
-  "identifier": "com.cndiff.app",
+  "identifier": "com.gitq.app",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "beforeBuildCommand": "pnpm build",
@@ -14,7 +14,7 @@
   "app": {
     "windows": [
       {
-        "title": "cndiff",
+        "title": "gitq",
         "width": 800,
         "height": 600
       }

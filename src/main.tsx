@@ -4,6 +4,6 @@ import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <h1>cndiff</h1>
+    <h1>gitq</h1>
   </StrictMode>,
 );
