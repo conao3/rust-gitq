@@ -1,8 +1,0 @@
-[package]
-name = "cndiff"
-version = "0.1.0"
-edition = "2024"
-description = "A diff tool"
-license = "Apache-2.0"
-
-[dependencies]

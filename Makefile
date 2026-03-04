@@ -1,14 +1,18 @@
+.PHONY: install
+install:
+	pnpm install
+
+.PHONY: dev
+dev:
+	pnpm tauri dev
+
+.PHONY: dev-web
+dev-web:
+	pnpm dev
+
 .PHONY: build
 build:
-	cargo build
-
-.PHONY: run
-run:
-	cargo run
-
-.PHONY: test
-test:
-	cargo test
+	pnpm tauri build
 
 .PHONY: fmt
 fmt:
@@ -16,4 +20,4 @@ fmt:
 
 .PHONY: clean
 clean:
-	cargo clean
+	rm -rf node_modules dist src-tauri/target

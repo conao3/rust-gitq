@@ -20,13 +20,20 @@
 
       perSystem =
         {
+          lib,
           system,
           ...
         }:
         let
-          overlay = final: prev: {
-            rustToolchain = prev.rust-bin.stable.latest.default;
-          };
+          overlay = final: prev:
+            let
+              nodejs = prev.nodejs_24;
+              pnpm = prev.pnpm_10.override { inherit nodejs; };
+              rustToolchain = prev.rust-bin.stable.latest.default;
+            in
+            {
+              inherit nodejs pnpm rustToolchain;
+            };
           pkgs = import inputs.nixpkgs {
             inherit system;
             overlays = [
@@ -34,18 +41,46 @@
               overlay
             ];
           };
+
+          linuxBuildInputs = with pkgs; [
+            webkitgtk_4_1
+            gtk3
+            libsoup_3
+            glib-networking
+            openssl
+            librsvg
+          ];
+
+          darwinBuildInputs = with pkgs; [
+            darwin.apple_sdk.frameworks.WebKit
+            darwin.apple_sdk.frameworks.AppKit
+            darwin.apple_sdk.frameworks.CoreServices
+          ];
         in
         {
           devShells.default = pkgs.mkShell {
             packages = with pkgs; [
               rustToolchain
-            ];
+              nodejs
+              pnpm
+            ] ++ lib.optionals stdenv.isLinux [ pkg-config ];
+
+            buildInputs =
+              if pkgs.stdenv.isLinux then linuxBuildInputs else darwinBuildInputs;
+
+            env = lib.optionalAttrs pkgs.stdenv.isLinux {
+              GIO_MODULE_PATH = "${pkgs.glib-networking}/lib/gio/modules";
+            };
           };
 
           treefmt = {
             projectRootFile = "flake.nix";
             programs.nixfmt.enable = true;
             programs.rustfmt.enable = true;
+            programs.prettier.enable = true;
+            settings.global.excludes = [
+              "pnpm-lock.yaml"
+            ];
           };
         };
     };
