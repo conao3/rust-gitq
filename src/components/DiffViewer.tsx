@@ -91,43 +91,51 @@ function splitHunkLines(hunk: DiffHunk) {
   return { leftLines, rightLines };
 }
 
-function SplitSideTable({
-  hunks,
-  side,
-}: {
-  hunks: DiffHunk[];
-  side: "left" | "right";
-}) {
+function SplitDiffView({ diff }: { diff: FileDiff }) {
+  if (diff.isBinary) {
+    return <div className="px-4 py-2 text-neutral-500">Binary file</div>;
+  }
   return (
     <table className="w-full border-collapse">
       <tbody>
-        {hunks.map((hunk, hi) => {
+        {diff.hunks.map((hunk, hi) => {
           const { leftLines, rightLines } = splitHunkLines(hunk);
-          const lines = side === "left" ? leftLines : rightLines;
           return (
             <>
               <tr key={`h${hi}`}>
                 <td colSpan={3} className="bg-neutral-800 px-4 py-1 text-neutral-400">
                   {hunk.header}
                 </td>
+                <td colSpan={3} className="border-l border-neutral-700 bg-neutral-800 px-4 py-1 text-neutral-400">
+                  {hunk.header}
+                </td>
               </tr>
-              {lines.map((line, li) => {
-                const cls = line === null
-                  ? "bg-neutral-900/50"
-                  : side === "left" && line.origin === "-"
-                    ? "bg-red-950/40 text-red-300"
-                    : side === "right" && line.origin === "+"
-                      ? "bg-green-950/40 text-green-300"
-                      : "text-neutral-300";
+              {leftLines.map((left, li) => {
+                const right = rightLines[li] ?? null;
+                const lBg = left === null ? "bg-neutral-900/50" : left.origin === "-" ? "bg-red-950/40" : "";
+                const lTxt = left !== null && left.origin === "-" ? "text-red-300" : "text-neutral-300";
+                const rBg = right === null ? "bg-neutral-900/50" : right.origin === "+" ? "bg-green-950/40" : "";
+                const rTxt = right !== null && right.origin === "+" ? "text-green-300" : "text-neutral-300";
                 return (
-                  <tr key={`${hi}-${li}`} className={cls}>
-                    <td className="sticky left-0 z-10 w-12 select-none bg-inherit px-0 text-right text-neutral-600">
-                      {side === "left" ? (line?.oldLineno ?? "") : (line?.newLineno ?? "")}
+                  <tr key={`${hi}-${li}`}>
+                    <td className={`${lBg} w-12 select-none px-0 text-right text-neutral-600`}>
+                      {left?.oldLineno ?? ""}
                     </td>
-                    <td className="sticky left-12 z-10 w-6 select-none bg-inherit px-0 text-center">
-                      {line ? (line.origin === " " ? " " : line.origin) : ""}
+                    <td className={`${lBg} ${lTxt} w-6 select-none px-0 text-center`}>
+                      {left ? (left.origin === " " ? " " : left.origin) : ""}
                     </td>
-                    <td className="whitespace-pre pl-2">{line?.content ?? ""}</td>
+                    <td className={`${lBg} ${lTxt} whitespace-pre pl-2`}>
+                      {left?.content ?? ""}
+                    </td>
+                    <td className={`${rBg} w-12 select-none border-l border-neutral-700 px-0 text-right text-neutral-600`}>
+                      {right?.newLineno ?? ""}
+                    </td>
+                    <td className={`${rBg} ${rTxt} w-6 select-none px-0 text-center`}>
+                      {right ? (right.origin === " " ? " " : right.origin) : ""}
+                    </td>
+                    <td className={`${rBg} ${rTxt} whitespace-pre pl-2`}>
+                      {right?.content ?? ""}
+                    </td>
                   </tr>
                 );
               })}
@@ -136,22 +144,6 @@ function SplitSideTable({
         })}
       </tbody>
     </table>
-  );
-}
-
-function SplitDiffView({ diff }: { diff: FileDiff }) {
-  if (diff.isBinary) {
-    return <div className="px-4 py-2 text-neutral-500">Binary file</div>;
-  }
-  return (
-    <div className="flex">
-      <div className="w-1/2 overflow-x-auto border-r border-neutral-700">
-        <SplitSideTable hunks={diff.hunks} side="left" />
-      </div>
-      <div className="w-1/2 overflow-x-auto">
-        <SplitSideTable hunks={diff.hunks} side="right" />
-      </div>
-    </div>
   );
 }
 
@@ -216,7 +208,7 @@ export function DiffPanel({
   if (!diff) return null;
 
   return (
-    <div className={`bg-neutral-950 font-mono text-sm ${layout === "unified" ? "overflow-x-auto" : ""}`}>
+    <div className="overflow-x-auto bg-neutral-950 font-mono text-sm">
       {layout === "split" ? (
         <SplitDiffView diff={diff} />
       ) : (
