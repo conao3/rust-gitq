@@ -52,13 +52,13 @@ function UnifiedDiffView({ diff }: { diff: FileDiff }) {
           {hunk.lines.map((line, li) => (
             <div
               key={li}
-              className={
+              className={`whitespace-pre ${
                 line.origin === "+"
                   ? "bg-green-950/40 text-green-300"
                   : line.origin === "-"
                     ? "bg-red-950/40 text-red-300"
                     : "text-neutral-300"
-              }
+              }`}
             >
               <span className="inline-block w-12 select-none text-right text-neutral-600">
                 {line.oldLineno ?? ""}
@@ -69,7 +69,7 @@ function UnifiedDiffView({ diff }: { diff: FileDiff }) {
               <span className="inline-block w-6 select-none text-center">
                 {line.origin}
               </span>
-              <span className="whitespace-pre">{line.content}</span>
+              {line.content}
             </div>
           ))}
         </div>
@@ -122,7 +122,7 @@ function SplitDiffView({ diff }: { diff: FileDiff }) {
               return (
                 <div key={li} className="flex">
                   <div
-                    className={`w-1/2 border-r border-neutral-700 ${
+                    className={`w-1/2 overflow-x-auto whitespace-pre border-r border-neutral-700 ${
                       left === null
                         ? "bg-neutral-900/50"
                         : left.origin === "-"
@@ -136,10 +136,10 @@ function SplitDiffView({ diff }: { diff: FileDiff }) {
                     <span className="inline-block w-6 select-none text-center">
                       {left ? (left.origin === " " ? " " : left.origin) : ""}
                     </span>
-                    <span className="whitespace-pre">{left?.content ?? ""}</span>
+                    {left?.content ?? ""}
                   </div>
                   <div
-                    className={`w-1/2 ${
+                    className={`w-1/2 overflow-x-auto whitespace-pre ${
                       right === null
                         ? "bg-neutral-900/50"
                         : right.origin === "+"
@@ -153,7 +153,7 @@ function SplitDiffView({ diff }: { diff: FileDiff }) {
                     <span className="inline-block w-6 select-none text-center">
                       {right ? (right.origin === " " ? " " : right.origin) : ""}
                     </span>
-                    <span className="whitespace-pre">{right?.content ?? ""}</span>
+                    {right?.content ?? ""}
                   </div>
                 </div>
               );
