@@ -4,6 +4,7 @@ mod graphql;
 use async_graphql::{EmptyMutation, EmptySubscription, Schema};
 use graphql::{AppState, QueryRoot};
 use std::sync::RwLock;
+use tauri::Manager;
 
 #[tauri::command]
 fn graphql(
@@ -35,6 +36,13 @@ fn main() {
     tauri::Builder::default()
         .manage(schema)
         .invoke_handler(tauri::generate_handler![graphql])
+        .setup(|app| {
+            #[cfg(debug_assertions)]
+            if let Some(window) = app.get_webview_window("main") {
+                window.open_devtools();
+            }
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
