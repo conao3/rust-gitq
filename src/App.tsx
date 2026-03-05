@@ -38,7 +38,7 @@ export function App() {
           if (viewMode === "browse") {
             setViewMode("compare" as const);
             setCompareBase(currentRef);
-            setCompareHead(null);
+            setCompareHead("__working__");
           } else {
             setViewMode("browse" as const);
           }
