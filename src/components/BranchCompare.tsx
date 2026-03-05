@@ -43,38 +43,42 @@ function UnifiedDiffView({ diff }: { diff: FileDiff }) {
     return <div className="px-4 py-2 text-neutral-500">Binary file</div>;
   }
   return (
-    <>
-      {diff.hunks.map((hunk, hi) => (
-        <div key={hi}>
-          <div className="bg-neutral-800 px-4 py-1 text-neutral-400">
-            {hunk.header}
-          </div>
-          {hunk.lines.map((line, li) => (
-            <div
-              key={li}
-              className={`whitespace-pre ${
-                line.origin === "+"
-                  ? "bg-green-950/40 text-green-300"
-                  : line.origin === "-"
-                    ? "bg-red-950/40 text-red-300"
-                    : "text-neutral-300"
-              }`}
-            >
-              <span className="inline-block w-12 select-none text-right text-neutral-600">
-                {line.oldLineno ?? ""}
-              </span>
-              <span className="inline-block w-12 select-none text-right text-neutral-600">
-                {line.newLineno ?? ""}
-              </span>
-              <span className="inline-block w-6 select-none text-center">
-                {line.origin}
-              </span>
-              {line.content}
-            </div>
-          ))}
-        </div>
-      ))}
-    </>
+    <table className="w-full border-collapse">
+      <tbody>
+        {diff.hunks.map((hunk, hi) => (
+          <>
+            <tr key={`h${hi}`}>
+              <td colSpan={4} className="bg-neutral-800 px-4 py-1 text-neutral-400">
+                {hunk.header}
+              </td>
+            </tr>
+            {hunk.lines.map((line, li) => (
+              <tr
+                key={`${hi}-${li}`}
+                className={
+                  line.origin === "+"
+                    ? "bg-green-950/40 text-green-300"
+                    : line.origin === "-"
+                      ? "bg-red-950/40 text-red-300"
+                      : "text-neutral-300"
+                }
+              >
+                <td className="sticky left-0 z-10 w-12 select-none bg-inherit px-0 text-right text-neutral-600">
+                  {line.oldLineno ?? ""}
+                </td>
+                <td className="sticky left-12 z-10 w-12 select-none bg-inherit px-0 text-right text-neutral-600">
+                  {line.newLineno ?? ""}
+                </td>
+                <td className="sticky left-24 z-10 w-6 select-none bg-inherit px-0 text-center">
+                  {line.origin}
+                </td>
+                <td className="whitespace-pre pl-2">{line.content}</td>
+              </tr>
+            ))}
+          </>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -83,85 +87,83 @@ function SplitDiffView({ diff }: { diff: FileDiff }) {
     return <div className="px-4 py-2 text-neutral-500">Binary file</div>;
   }
   return (
-    <>
-      {diff.hunks.map((hunk, hi) => {
-        const leftLines: (DiffLine | null)[] = [];
-        const rightLines: (DiffLine | null)[] = [];
-        let i = 0;
-        const lines = hunk.lines;
-        while (i < lines.length) {
-          if (lines[i].origin === "-") {
-            const delStart = i;
-            while (i < lines.length && lines[i].origin === "-") i++;
-            const addStart = i;
-            while (i < lines.length && lines[i].origin === "+") i++;
-            const delCount = addStart - delStart;
-            const addCount = i - addStart;
-            const maxCount = Math.max(delCount, addCount);
-            for (let j = 0; j < maxCount; j++) {
-              leftLines.push(j < delCount ? lines[delStart + j] : null);
-              rightLines.push(j < addCount ? lines[addStart + j] : null);
+    <table className="w-full border-collapse">
+      <tbody>
+        {diff.hunks.map((hunk, hi) => {
+          const leftLines: (DiffLine | null)[] = [];
+          const rightLines: (DiffLine | null)[] = [];
+          let i = 0;
+          const lines = hunk.lines;
+          while (i < lines.length) {
+            if (lines[i].origin === "-") {
+              const delStart = i;
+              while (i < lines.length && lines[i].origin === "-") i++;
+              const addStart = i;
+              while (i < lines.length && lines[i].origin === "+") i++;
+              const delCount = addStart - delStart;
+              const addCount = i - addStart;
+              const maxCount = Math.max(delCount, addCount);
+              for (let j = 0; j < maxCount; j++) {
+                leftLines.push(j < delCount ? lines[delStart + j] : null);
+                rightLines.push(j < addCount ? lines[addStart + j] : null);
+              }
+            } else if (lines[i].origin === "+") {
+              leftLines.push(null);
+              rightLines.push(lines[i]);
+              i++;
+            } else {
+              leftLines.push(lines[i]);
+              rightLines.push(lines[i]);
+              i++;
             }
-          } else if (lines[i].origin === "+") {
-            leftLines.push(null);
-            rightLines.push(lines[i]);
-            i++;
-          } else {
-            leftLines.push(lines[i]);
-            rightLines.push(lines[i]);
-            i++;
           }
-        }
-        return (
-          <div key={hi}>
-            <div className="bg-neutral-800 px-4 py-1 text-neutral-400">
-              {hunk.header}
-            </div>
-            {leftLines.map((left, li) => {
-              const right = rightLines[li];
-              return (
-                <div key={li} className="flex">
-                  <div
-                    className={`w-1/2 overflow-x-auto whitespace-pre border-r border-neutral-700 ${
-                      left === null
-                        ? "bg-neutral-900/50"
-                        : left.origin === "-"
-                          ? "bg-red-950/40 text-red-300"
-                          : "text-neutral-300"
-                    }`}
-                  >
-                    <span className="inline-block w-12 select-none text-right text-neutral-600">
+          return (
+            <>
+              <tr key={`h${hi}`}>
+                <td colSpan={6} className="bg-neutral-800 px-4 py-1 text-neutral-400">
+                  {hunk.header}
+                </td>
+              </tr>
+              {leftLines.map((left, li) => {
+                const right = rightLines[li];
+                const leftClass = left === null
+                  ? "bg-neutral-900/50"
+                  : left.origin === "-"
+                    ? "bg-red-950/40 text-red-300"
+                    : "text-neutral-300";
+                const rightClass = right === null
+                  ? "bg-neutral-900/50"
+                  : right.origin === "+"
+                    ? "bg-green-950/40 text-green-300"
+                    : "text-neutral-300";
+                return (
+                  <tr key={`${hi}-${li}`}>
+                    <td className={`sticky left-0 z-10 w-12 select-none px-0 text-right text-neutral-600 ${leftClass}`}>
                       {left?.oldLineno ?? ""}
-                    </span>
-                    <span className="inline-block w-6 select-none text-center">
+                    </td>
+                    <td className={`sticky left-12 z-10 w-6 select-none px-0 text-center ${leftClass}`}>
                       {left ? (left.origin === " " ? " " : left.origin) : ""}
-                    </span>
-                    {left?.content ?? ""}
-                  </div>
-                  <div
-                    className={`w-1/2 overflow-x-auto whitespace-pre ${
-                      right === null
-                        ? "bg-neutral-900/50"
-                        : right.origin === "+"
-                          ? "bg-green-950/40 text-green-300"
-                          : "text-neutral-300"
-                    }`}
-                  >
-                    <span className="inline-block w-12 select-none text-right text-neutral-600">
+                    </td>
+                    <td className={`whitespace-pre border-r border-neutral-700 pl-2 ${leftClass}`}>
+                      {left?.content ?? ""}
+                    </td>
+                    <td className={`sticky left-0 z-10 w-12 select-none px-0 text-right text-neutral-600 ${rightClass}`}>
                       {right?.newLineno ?? ""}
-                    </span>
-                    <span className="inline-block w-6 select-none text-center">
+                    </td>
+                    <td className={`sticky left-12 z-10 w-6 select-none px-0 text-center ${rightClass}`}>
                       {right ? (right.origin === " " ? " " : right.origin) : ""}
-                    </span>
-                    {right?.content ?? ""}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        );
-      })}
-    </>
+                    </td>
+                    <td className={`whitespace-pre pl-2 ${rightClass}`}>
+                      {right?.content ?? ""}
+                    </td>
+                  </tr>
+                );
+              })}
+            </>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 
