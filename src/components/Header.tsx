@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { graphql } from "../graphql";
 import { BranchSelect } from "./BranchSelect";
 
@@ -27,20 +28,21 @@ export function Header({
   onChangeRepo: () => void;
   onViewModeChange: (mode: ViewMode) => void;
 }) {
-  const [branches, setBranches] = useState<Branch[]>([]);
-
-  const repoName = repoPath.split("/").pop() || repoPath;
+  const { data } = useQuery({
+    queryKey: ["branches"],
+    queryFn: () => graphql<RepoData>(
+      `{ repository { currentBranch branches { name isHead remote } } }`,
+    ),
+  });
 
   useEffect(() => {
-    graphql<RepoData>(
-      `{ repository { currentBranch branches { name isHead remote } } }`,
-    ).then((data) => {
-      setBranches(data.repository.branches);
-      if (!currentRef) {
-        onBranchChange(data.repository.currentBranch);
-      }
-    });
-  });
+    if (data && !currentRef) {
+      onBranchChange(data.repository.currentBranch);
+    }
+  }, [data, currentRef, onBranchChange]);
+
+  const repoName = repoPath.split("/").pop() || repoPath;
+  const branches = data?.repository.branches ?? [];
 
   return (
     <div className="flex items-center gap-4 border-b border-neutral-700 bg-neutral-800 px-4 py-2">

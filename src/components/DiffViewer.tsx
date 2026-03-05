@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { graphql } from "../graphql";
 
 export type DiffLine = {
@@ -153,39 +153,29 @@ export function DiffPanel({
   compareHead,
   layout,
   hideWhitespace,
-  refreshKey,
 }: {
   selectedFile: string | null;
   compareBase: string;
   compareHead: string;
   layout: "unified" | "split";
   hideWhitespace: boolean;
-  refreshKey?: number;
 }) {
-  const [diff, setDiff] = useState<FileDiff | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    void refreshKey;
-    if (!selectedFile) {
-      setDiff(null);
-      return;
-    }
-    setLoading(true);
-    graphql<{ repository: { diffFile: FileDiff } }>(
-      `query DiffFile($base: String!, $head: String!, $path: String!, $ignoreWhitespace: Boolean) {
-        repository {
-          diffFile(base: $base, head: $head, path: $path, ignoreWhitespace: $ignoreWhitespace) {
-            isBinary
-            hunks { header lines { origin oldLineno newLineno content } }
+  const { data: diff, isLoading } = useQuery({
+    queryKey: ["diffFile", compareBase, compareHead, selectedFile, hideWhitespace],
+    queryFn: () =>
+      graphql<{ repository: { diffFile: FileDiff } }>(
+        `query DiffFile($base: String!, $head: String!, $path: String!, $ignoreWhitespace: Boolean) {
+          repository {
+            diffFile(base: $base, head: $head, path: $path, ignoreWhitespace: $ignoreWhitespace) {
+              isBinary
+              hunks { header lines { origin oldLineno newLineno content } }
+            }
           }
-        }
-      }`,
-      { base: compareBase, head: compareHead, path: selectedFile, ignoreWhitespace: hideWhitespace },
-    ).then((data) => {
-      setDiff(data.repository.diffFile);
-      setLoading(false);
-    });
+        }`,
+        { base: compareBase, head: compareHead, path: selectedFile!, ignoreWhitespace: hideWhitespace },
+      ).then((d) => d.repository.diffFile),
+    enabled: !!selectedFile,
+    refetchInterval: compareHead === "__working__" ? 2000 : false,
   });
 
   if (!selectedFile) {
@@ -196,7 +186,7 @@ export function DiffPanel({
     );
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center gap-2 px-4 py-3 text-sm text-neutral-400">
         <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-neutral-600 border-t-neutral-300" />

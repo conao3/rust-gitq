@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { graphql } from "../graphql";
 import {
   ChevronRightIcon,
@@ -75,16 +76,19 @@ function TreeNode({
   depth: number;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [children, setChildren] = useState<TreeEntry[]>([]);
+
+  const { data: children = [] } = useQuery({
+    queryKey: ["tree", currentRef, entry.path],
+    queryFn: () =>
+      graphql<TreeData>(
+        `query Tree($path: String, $ref: String) { repository { tree(path: $path, ref: $ref) { name path entryType } } }`,
+        { path: entry.path, ref: currentRef },
+      ).then((d) => d.repository.tree),
+    enabled: expanded && entry.entryType === "TREE",
+  });
 
   const toggle = () => {
     if (entry.entryType === "TREE") {
-      if (!expanded && children.length === 0) {
-        graphql<TreeData>(
-          `query Tree($path: String, $ref: String) { repository { tree(path: $path, ref: $ref) { name path entryType } } }`,
-          { path: entry.path, ref: currentRef },
-        ).then((data) => setChildren(data.repository.tree));
-      }
       setExpanded(!expanded);
     } else {
       onSelectFile(entry.path);
@@ -153,14 +157,14 @@ export function FileTree({
   selectedFile: string | null;
   onSelectFile: (path: string) => void;
 }) {
-  const [entries, setEntries] = useState<TreeEntry[]>([]);
-
-  useEffect(() => {
-    if (!currentRef) return;
-    graphql<TreeData>(
-      `query Tree($ref: String) { repository { tree(ref: $ref) { name path entryType } } }`,
-      { ref: currentRef },
-    ).then((data) => setEntries(data.repository.tree));
+  const { data: entries = [] } = useQuery({
+    queryKey: ["tree", currentRef],
+    queryFn: () =>
+      graphql<TreeData>(
+        `query Tree($ref: String) { repository { tree(ref: $ref) { name path entryType } } }`,
+        { ref: currentRef },
+      ).then((d) => d.repository.tree),
+    enabled: !!currentRef,
   });
 
   return (

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { graphql } from "../graphql";
 
 type FsEntry = { name: string; path: string; isGitRepo: boolean };
@@ -11,35 +12,28 @@ export function DirBrowser({
   onOpenRepo: (path: string) => void;
 }) {
   const [currentPath, setCurrentPath] = useState<string | null>(initialPath ?? null);
-  const [entries, setEntries] = useState<FsEntry[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (currentPath) return;
-    graphql<{ homePath: string }>(`{ homePath }`).then((data) =>
-      setCurrentPath(data.homePath),
-    );
+  const { data: homePath } = useQuery({
+    queryKey: ["homePath"],
+    queryFn: () => graphql<{ homePath: string }>(`{ homePath }`).then((d) => d.homePath),
+    enabled: currentPath === null,
   });
 
   useEffect(() => {
-    if (!currentPath) return;
-    setLoading(true);
-    graphql<{ listDirectory: FsEntry[] }>(
-      `query ListDir($path: String!) { listDirectory(path: $path) { name path isGitRepo } }`,
-      { path: currentPath },
-    ).then((data) => {
-      setEntries(data.listDirectory);
-      setLoading(false);
-    });
+    if (homePath && currentPath === null) setCurrentPath(homePath);
+  }, [homePath, currentPath]);
+
+  const { data: entries = [], isLoading } = useQuery({
+    queryKey: ["directory", currentPath],
+    queryFn: () =>
+      graphql<{ listDirectory: FsEntry[] }>(
+        `query ListDir($path: String!) { listDirectory(path: $path) { name path isGitRepo } }`,
+        { path: currentPath! },
+      ).then((d) => d.listDirectory),
+    enabled: currentPath !== null,
   });
 
   const pathSegments = currentPath?.split("/").filter(Boolean) || [];
-
-  const navigateTo = (path: string) => {
-    setCurrentPath(path);
-    setEntries([]);
-    setLoading(true);
-  };
 
   const handleClick = async (entry: FsEntry) => {
     if (entry.isGitRepo) {
@@ -49,7 +43,7 @@ export function DirBrowser({
       );
       onOpenRepo(entry.path);
     } else {
-      navigateTo(entry.path);
+      setCurrentPath(entry.path);
     }
   };
 
@@ -57,7 +51,7 @@ export function DirBrowser({
     <div className="flex h-screen flex-col bg-neutral-900 text-neutral-200">
       <div className="flex items-center gap-1 border-b border-neutral-700 bg-neutral-800 px-4 py-2 text-sm">
         <button
-          onClick={() => navigateTo("/")}
+          onClick={() => setCurrentPath("/")}
           className="rounded px-1 hover:bg-neutral-700"
         >
           /
@@ -68,7 +62,7 @@ export function DirBrowser({
             <span key={segPath} className="flex items-center gap-1">
               <span className="text-neutral-500">/</span>
               <button
-                onClick={() => navigateTo(segPath)}
+                onClick={() => setCurrentPath(segPath)}
                 className="rounded px-1 hover:bg-neutral-700"
               >
                 {seg}
@@ -81,14 +75,14 @@ export function DirBrowser({
         {currentPath && currentPath !== "/" && (
           <div
             onClick={() =>
-              navigateTo(currentPath.split("/").slice(0, -1).join("/") || "/")
+              setCurrentPath(currentPath.split("/").slice(0, -1).join("/") || "/")
             }
             className="flex cursor-pointer items-center gap-3 border-b border-neutral-800 px-4 py-2 text-sm hover:bg-neutral-800"
           >
             <span className="text-neutral-500">..</span>
           </div>
         )}
-        {loading && (
+        {isLoading && (
           <div className="flex items-center gap-2 px-4 py-3 text-sm text-neutral-400">
             <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-neutral-600 border-t-neutral-300" />
             Loading...

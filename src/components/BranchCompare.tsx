@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { graphql } from "../graphql";
 import { BranchSelect } from "./BranchSelect";
 import { DiffPanel } from "./DiffViewer";
@@ -36,58 +37,45 @@ export function BranchCompare({
   onBaseChange: (ref: string) => void;
   onHeadChange: (ref: string) => void;
 }) {
-  const [branches, setBranches] = useState<Branch[]>([]);
-  const [entries, setEntries] = useState<DiffEntry[]>([]);
-  const [loading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [layout, setLayout] = useState<"unified" | "split">("unified");
   const [hideWhitespace, setHideWhitespace] = useState(false);
   const [useMergeBase, setUseMergeBase] = useState(false);
-  const [resolvedBase, setResolvedBase] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    graphql<{ repository: { branches: Branch[] } }>(
-      `{ repository { branches { name isHead remote } } }`,
-    ).then((data) => setBranches(data.repository.branches));
+  const { data: branches = [] } = useQuery({
+    queryKey: ["branches"],
+    queryFn: () =>
+      graphql<{ repository: { branches: Branch[] } }>(
+        `{ repository { branches { name isHead remote } } }`,
+      ).then((d) => d.repository.branches),
   });
 
-  useEffect(() => {
-    if (compareHead !== "__working__") return;
-    const id = setInterval(() => setRefreshKey((k) => k + 1), 2000);
-    return () => clearInterval(id);
+  const { data: mergeBaseOid } = useQuery({
+    queryKey: ["mergeBase", compareBase, compareHead],
+    queryFn: () =>
+      graphql<{ repository: { mergeBase: string } }>(
+        `query MergeBase($ref1: String!, $ref2: String!) {
+          repository { mergeBase(ref1: $ref1, ref2: $ref2) }
+        }`,
+        { ref1: compareBase!, ref2: compareHead! },
+      ).then((d) => d.repository.mergeBase),
+    enabled: useMergeBase && !!compareBase && !!compareHead && compareHead !== "__working__" && compareBase !== compareHead,
   });
 
-  useEffect(() => {
-    if (!compareBase || !compareHead || compareBase === compareHead) {
-      setResolvedBase(null);
-      setEntries([]);
-      setSelectedFile(null);
-      return;
-    }
-    if (refreshKey === 0 || compareHead === "__working__") {
-      setLoading((prev) => refreshKey === 0 ? true : prev);
-    }
-    const basePromise = useMergeBase && compareHead !== "__working__"
-      ? graphql<{ repository: { mergeBase: string } }>(
-          `query MergeBase($ref1: String!, $ref2: String!) {
-            repository { mergeBase(ref1: $ref1, ref2: $ref2) }
-          }`,
-          { ref1: compareBase, ref2: compareHead },
-        ).then((data) => data.repository.mergeBase)
-      : Promise.resolve(compareBase);
-    basePromise.then((effectiveBase) => {
-      setResolvedBase(useMergeBase ? effectiveBase : null);
-      return graphql<{ repository: { diff: DiffEntry[] } }>(
+  const effectiveBase = (useMergeBase && mergeBaseOid) ? mergeBaseOid : compareBase;
+  const canCompare = !!effectiveBase && !!compareHead && effectiveBase !== compareHead;
+
+  const { data: entries = [], isLoading } = useQuery({
+    queryKey: ["diff", effectiveBase, compareHead, hideWhitespace],
+    queryFn: () =>
+      graphql<{ repository: { diff: DiffEntry[] } }>(
         `query Diff($base: String!, $head: String!, $ignoreWhitespace: Boolean) {
           repository { diff(base: $base, head: $head, ignoreWhitespace: $ignoreWhitespace) { path status additions deletions } }
         }`,
-        { base: effectiveBase, head: compareHead, ignoreWhitespace: hideWhitespace },
-      );
-    }).then((data) => {
-      setEntries(data.repository.diff);
-      setLoading(false);
-    });
+        { base: effectiveBase!, head: compareHead!, ignoreWhitespace: hideWhitespace },
+      ).then((d) => d.repository.diff),
+    enabled: canCompare,
+    refetchInterval: compareHead === "__working__" ? 2000 : false,
   });
 
   return (
@@ -111,9 +99,9 @@ export function BranchCompare({
             {entries.length} changed file{entries.length !== 1 ? "s" : ""}
           </span>
         )}
-        {resolvedBase && (
+        {useMergeBase && mergeBaseOid && (
           <span className="font-mono text-xs text-neutral-500">
-            base: {resolvedBase.slice(0, 7)}
+            base: {mergeBaseOid.slice(0, 7)}
           </span>
         )}
         <div className="ml-auto flex items-center gap-3">
@@ -151,23 +139,23 @@ export function BranchCompare({
           </label>
         </div>
       </div>
-      {loading && (
+      {isLoading && (
         <div className="flex items-center gap-2 px-4 py-3 text-sm text-neutral-400">
           <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-neutral-600 border-t-neutral-300" />
           Loading...
         </div>
       )}
-      {!loading && compareBase && compareHead && compareBase === compareHead && (
+      {!isLoading && compareBase && compareHead && compareBase === compareHead && (
         <div className="flex flex-1 items-center justify-center text-neutral-500">
           Same branch selected
         </div>
       )}
-      {!loading && entries.length === 0 && compareBase && compareHead && compareBase !== compareHead && (
+      {!isLoading && entries.length === 0 && canCompare && (
         <div className="flex flex-1 items-center justify-center text-neutral-500">
           No differences
         </div>
       )}
-      {!loading && entries.length > 0 && (
+      {!isLoading && entries.length > 0 && (
         <div className="flex min-h-0 flex-1">
           <div className="w-72 shrink-0 overflow-y-auto border-r border-neutral-700">
             {entries.map((entry) => (
@@ -192,11 +180,10 @@ export function BranchCompare({
           <div className="min-w-0 flex-1 overflow-y-auto">
             <DiffPanel
               selectedFile={selectedFile}
-              compareBase={resolvedBase ?? compareBase!}
+              compareBase={effectiveBase!}
               compareHead={compareHead!}
               layout={layout}
               hideWhitespace={hideWhitespace}
-              refreshKey={refreshKey}
             />
           </div>
         </div>

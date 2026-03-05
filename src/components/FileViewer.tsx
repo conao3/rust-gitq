@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { graphql } from "../graphql";
 import { createHighlighter, type Highlighter, type BundledLanguage } from "shiki";
 
@@ -102,6 +102,10 @@ function getHighlighter(): Promise<Highlighter> {
   return highlighterPromise;
 }
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 export function FileViewer({
   filePath,
   currentRef,
@@ -109,57 +113,31 @@ export function FileViewer({
   filePath: string | null;
   currentRef: string | null;
 }) {
-  const [content, setContent] = useState<string | null>(null);
-  const [isBinary, setIsBinary] = useState(false);
-  const [highlightedLines, setHighlightedLines] = useState<string[] | null>(null);
-  const prevPathRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!filePath) {
-      setContent(null);
-      setHighlightedLines(null);
-      return;
-    }
-    if (filePath !== prevPathRef.current) {
-      setHighlightedLines(null);
-    }
-    prevPathRef.current = filePath;
-    graphql<FileData>(
-      `query File($path: String!, $ref: String) { repository { file(path: $path, ref: $ref) { path content size isBinary } } }`,
-      { path: filePath, ref: currentRef },
-    ).then((data) => {
-      if (data.repository.file) {
-        setContent(data.repository.file.content);
-        setIsBinary(data.repository.file.isBinary);
-      } else {
-        setContent(null);
-      }
-    });
+  const { data: fileData } = useQuery({
+    queryKey: ["file", filePath, currentRef],
+    queryFn: () =>
+      graphql<FileData>(
+        `query File($path: String!, $ref: String) { repository { file(path: $path, ref: $ref) { path content size isBinary } } }`,
+        { path: filePath!, ref: currentRef },
+      ).then((d) => d.repository.file),
+    enabled: !!filePath,
   });
 
-  useEffect(() => {
-    if (!content || !filePath || isBinary) return;
-    const lang = getLang(filePath);
-    if (!lang) {
-      setHighlightedLines(content.split("\n").map((l) => escapeHtml(l)));
-      return;
-    }
-    let cancelled = false;
-    getHighlighter().then(async (hl) => {
-      if (cancelled) return;
-      const loaded = hl.getLoadedLanguages();
-      if (!loaded.includes(lang)) {
+  const { data: highlightedLines } = useQuery({
+    queryKey: ["highlight", filePath, fileData?.content],
+    queryFn: async () => {
+      const lang = getLang(filePath!);
+      if (!lang) return fileData!.content.split("\n").map((l) => escapeHtml(l));
+      const hl = await getHighlighter();
+      if (!hl.getLoadedLanguages().includes(lang)) {
         await hl.loadLanguage(lang as Parameters<Highlighter["loadLanguage"]>[0]);
       }
-      if (cancelled) return;
-      const tokens = hl.codeToTokens(content, { lang: lang as BundledLanguage, theme: "github-dark" });
-      setHighlightedLines(
-        tokens.tokens.map((line) =>
-          line.map((token) => `<span style="color:${token.color}">${escapeHtml(token.content)}</span>`).join(""),
-        ),
+      const tokens = hl.codeToTokens(fileData!.content, { lang: lang as BundledLanguage, theme: "github-dark" });
+      return tokens.tokens.map((line) =>
+        line.map((token) => `<span style="color:${token.color}">${escapeHtml(token.content)}</span>`).join(""),
       );
-    });
-    return () => { cancelled = true; };
+    },
+    enabled: !!fileData && !fileData.isBinary && !!filePath,
   });
 
   if (!filePath) {
@@ -170,7 +148,7 @@ export function FileViewer({
     );
   }
 
-  if (isBinary) {
+  if (fileData?.isBinary) {
     return (
       <div className="flex flex-1 items-center justify-center text-neutral-500">
         Binary file
@@ -178,7 +156,7 @@ export function FileViewer({
     );
   }
 
-  const lines = content?.split("\n") ?? [];
+  const lines = fileData?.content?.split("\n") ?? [];
 
   return (
     <div className="flex-1 overflow-auto">
@@ -208,8 +186,4 @@ export function FileViewer({
       </pre>
     </div>
   );
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }

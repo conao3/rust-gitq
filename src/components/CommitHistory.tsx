@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { graphql } from "../graphql";
 import { DiffPanel } from "./DiffViewer";
 
@@ -178,68 +179,60 @@ type DiffEntry = {
 };
 
 export function CommitHistory({ currentRef }: { currentRef: string | null }) {
-  const [commits, setCommits] = useState<CommitNode[]>([]);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [selectedCommit, setSelectedCommit] = useState<CommitNode | null>(null);
   const [diffEntries, setDiffEntries] = useState<DiffEntry[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [layout, setLayout] = useState<"unified" | "split">("unified");
 
-  const graphRows = calculateGraph(commits);
-
-  const fetchLog = (skip: number, append: boolean) => {
-    setLoading(true);
-    graphql<{ repository: { log: CommitLog } }>(
-      `query Log($ref: String, $skip: Int, $limit: Int) {
-        repository {
-          log(ref: $ref, skip: $skip, limit: $limit) {
-            commits {
-              oid shortId message authorName authorEmail authorTime parentIds
-              decorations { name kind }
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: ["commitLog", currentRef],
+    queryFn: ({ pageParam }) =>
+      graphql<{ repository: { log: CommitLog } }>(
+        `query Log($ref: String, $skip: Int, $limit: Int) {
+          repository {
+            log(ref: $ref, skip: $skip, limit: $limit) {
+              commits {
+                oid shortId message authorName authorEmail authorTime parentIds
+                decorations { name kind }
+              }
+              hasMore
             }
-            hasMore
           }
-        }
-      }`,
-      { ref: currentRef, skip, limit: 50 },
-    ).then((data) => {
-      setCommits((prev) => append ? [...prev, ...data.repository.log.commits] : data.repository.log.commits);
-      setHasMore(data.repository.log.hasMore);
-      setLoading(false);
-    });
-  };
-
-  useEffect(() => {
-    if (!currentRef) return;
-    setSelectedCommit(null);
-    setDiffEntries([]);
-    setSelectedFile(null);
-    fetchLog(0, false);
+        }`,
+        { ref: currentRef, skip: pageParam, limit: 50 },
+      ).then((d) => d.repository.log),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.hasMore ? allPages.reduce((acc, p) => acc + p.commits.length, 0) : undefined,
+    enabled: !!currentRef,
   });
 
-  useEffect(() => {
-    if (!selectedCommit) {
+  const commits = data?.pages.flatMap((p) => p.commits) ?? [];
+  const graphRows = calculateGraph(commits);
+
+  const handleCommitClick = (commit: CommitNode) => {
+    if (selectedCommit?.oid === commit.oid) {
+      setSelectedCommit(null);
       setDiffEntries([]);
       setSelectedFile(null);
       return;
     }
-    if (selectedCommit.parentIds.length === 0) {
+    setSelectedCommit(commit);
+    if (commit.parentIds.length === 0) {
       setDiffEntries([]);
+      setSelectedFile(null);
       return;
     }
     graphql<{ repository: { diff: DiffEntry[] } }>(
       `query Diff($base: String!, $head: String!) {
         repository { diff(base: $base, head: $head) { path status additions deletions } }
       }`,
-      { base: selectedCommit.parentIds[0], head: selectedCommit.oid },
-    ).then((data) => {
-      setDiffEntries(data.repository.diff);
-      if (data.repository.diff.length > 0) {
-        setSelectedFile(data.repository.diff[0].path);
-      }
+      { base: commit.parentIds[0], head: commit.oid },
+    ).then((d) => {
+      setDiffEntries(d.repository.diff);
+      setSelectedFile(d.repository.diff.length > 0 ? d.repository.diff[0].path : null);
     });
-  });
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -249,7 +242,7 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
             {commits.map((commit, i) => (
               <tr
                 key={commit.oid}
-                onClick={() => setSelectedCommit(selectedCommit?.oid === commit.oid ? null : commit)}
+                onClick={() => handleCommitClick(commit)}
                 className={`cursor-pointer border-b border-neutral-800 hover:bg-neutral-800/50 ${
                   selectedCommit?.oid === commit.oid ? "bg-neutral-800" : ""
                 }`}
@@ -281,14 +274,14 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
             ))}
           </tbody>
         </table>
-        {hasMore && (
+        {hasNextPage && (
           <div className="flex justify-center py-3">
             <button
-              onClick={() => fetchLog(commits.length, true)}
-              disabled={loading}
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
               className="rounded border border-neutral-600 px-4 py-1 text-sm text-neutral-400 hover:bg-neutral-800"
             >
-              {loading ? "Loading..." : "Load More"}
+              {isFetchingNextPage ? "Loading..." : "Load More"}
             </button>
           </div>
         )}
