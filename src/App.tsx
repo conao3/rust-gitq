@@ -3,11 +3,15 @@ import { DirBrowser } from "./components/DirBrowser";
 import { Header } from "./components/Header";
 import { FileTree } from "./components/FileTree";
 import { FileViewer } from "./components/FileViewer";
+import { BranchCompare } from "./components/BranchCompare";
 
 export function App() {
   const [repoPath, setRepoPath] = useState<string | null>(null);
   const [currentRef, setCurrentRef] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"browse" | "compare">("browse" as const);
+  const [compareBase, setCompareBase] = useState<string | null>(null);
+  const [compareHead, setCompareHead] = useState<string | null>(null);
 
   if (!repoPath) {
     return <DirBrowser onOpenRepo={setRepoPath} />;
@@ -18,21 +22,41 @@ export function App() {
       <Header
         repoPath={repoPath}
         currentRef={currentRef}
+        viewMode={viewMode}
         onBranchChange={setCurrentRef}
         onChangeRepo={() => {
           setRepoPath(null);
           setSelectedFile(null);
           setCurrentRef(null);
+          setViewMode("browse" as const);
+        }}
+        onToggleCompare={() => {
+          if (viewMode === "browse") {
+            setViewMode("compare" as const);
+            setCompareBase(currentRef);
+            setCompareHead(null);
+          } else {
+            setViewMode("browse" as const);
+          }
         }}
       />
-      <div className="flex min-h-0 flex-1">
-        <FileTree
-          currentRef={currentRef}
-          selectedFile={selectedFile}
-          onSelectFile={setSelectedFile}
+      {viewMode === "compare" ? (
+        <BranchCompare
+          compareBase={compareBase}
+          compareHead={compareHead}
+          onBaseChange={setCompareBase}
+          onHeadChange={setCompareHead}
         />
-        <FileViewer filePath={selectedFile} currentRef={currentRef} />
-      </div>
+      ) : (
+        <div className="flex min-h-0 flex-1">
+          <FileTree
+            currentRef={currentRef}
+            selectedFile={selectedFile}
+            onSelectFile={setSelectedFile}
+          />
+          <FileViewer filePath={selectedFile} currentRef={currentRef} />
+        </div>
+      )}
     </div>
   );
 }

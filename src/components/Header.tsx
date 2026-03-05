@@ -12,13 +12,17 @@ type RepoData = {
 export function Header({
   repoPath,
   currentRef,
+  viewMode,
   onBranchChange,
   onChangeRepo,
+  onToggleCompare,
 }: {
   repoPath: string;
   currentRef: string | null;
+  viewMode: "browse" | "compare";
   onBranchChange: (ref: string) => void;
   onChangeRepo: () => void;
+  onToggleCompare: () => void;
 }) {
   const [branches, setBranches] = useState<Branch[]>([]);
 
@@ -44,17 +48,29 @@ export function Header({
         ← Back
       </button>
       <span className="font-semibold">{repoName}</span>
-      <select
-        value={currentRef || ""}
-        onChange={(e) => onBranchChange(e.target.value)}
-        className="rounded border border-neutral-600 bg-neutral-700 px-2 py-1 text-sm"
+      {viewMode === "browse" && (
+        <select
+          value={currentRef || ""}
+          onChange={(e) => onBranchChange(e.target.value)}
+          className="rounded border border-neutral-600 bg-neutral-700 px-2 py-1 text-sm"
+        >
+          {branches.map((b) => (
+            <option key={b.name} value={b.name}>
+              {b.name}
+            </option>
+          ))}
+        </select>
+      )}
+      <button
+        onClick={onToggleCompare}
+        className={`rounded border px-2 py-1 text-sm ${
+          viewMode === "compare"
+            ? "border-blue-500 bg-blue-600 text-white"
+            : "border-neutral-600 hover:bg-neutral-700"
+        }`}
       >
-        {branches.map((b) => (
-          <option key={b.name} value={b.name}>
-            {b.name}
-          </option>
-        ))}
-      </select>
+        {viewMode === "compare" ? "Browse" : "Compare"}
+      </button>
     </div>
   );
 }
