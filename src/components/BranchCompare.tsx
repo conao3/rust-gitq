@@ -51,16 +51,17 @@ export function BranchCompare({
   });
   const branches = branchData?.branches ?? [];
 
+  const mergeBaseRef2 = compareHead === "__working__" ? "HEAD" : compareHead;
   const { data: mergeBaseOid } = useQuery({
-    queryKey: ["mergeBase", compareBase, compareHead],
+    queryKey: ["mergeBase", compareBase, mergeBaseRef2],
     queryFn: () =>
       graphql<{ repository: { mergeBase: string } }>(
         `query MergeBase($ref1: String!, $ref2: String!) {
           repository { mergeBase(ref1: $ref1, ref2: $ref2) }
         }`,
-        { ref1: compareBase!, ref2: compareHead! },
+        { ref1: compareBase!, ref2: mergeBaseRef2! },
       ).then((d) => d.repository.mergeBase),
-    enabled: useMergeBase && !!compareBase && !!compareHead && compareHead !== "__working__" && compareBase !== compareHead,
+    enabled: useMergeBase && !!compareBase && !!mergeBaseRef2 && compareBase !== mergeBaseRef2,
   });
 
   const effectiveBase = (useMergeBase && mergeBaseOid) ? mergeBaseOid : compareBase;
