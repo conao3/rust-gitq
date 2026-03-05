@@ -103,6 +103,59 @@ impl RepositoryObject {
             Err(_) => Ok(None),
         }
     }
+
+    async fn diff(
+        &self,
+        base: String,
+        head: String,
+    ) -> async_graphql::Result<Vec<DiffEntry>> {
+        let repo = git::open(&self.path)?;
+        Ok(git::compare_branches(&repo, &base, &head)?
+            .into_iter()
+            .map(|e| DiffEntry {
+                path: e.path,
+                status: diff_status(e.status),
+                additions: e.additions as i32,
+                deletions: e.deletions as i32,
+            })
+            .collect())
+    }
+
+    async fn diff_file(
+        &self,
+        base: String,
+        head: String,
+        path: String,
+    ) -> async_graphql::Result<FileDiff> {
+        let repo = git::open(&self.path)?;
+        let info = git::diff_file(&repo, &base, &head, &path)?;
+        Ok(FileDiff {
+            path: info.path,
+            status: diff_status(info.status),
+            is_binary: info.is_binary,
+            hunks: info
+                .hunks
+                .into_iter()
+                .map(|h| DiffHunk {
+                    header: h.header,
+                    old_start: h.old_start as i32,
+                    old_lines: h.old_lines as i32,
+                    new_start: h.new_start as i32,
+                    new_lines: h.new_lines as i32,
+                    lines: h
+                        .lines
+                        .into_iter()
+                        .map(|l| DiffLine {
+                            origin: l.origin.to_string(),
+                            old_lineno: l.old_lineno.map(|n| n as i32),
+                            new_lineno: l.new_lineno.map(|n| n as i32),
+                            content: l.content,
+                        })
+                        .collect(),
+                })
+                .collect(),
+        })
+    }
 }
 
 #[derive(SimpleObject)]
@@ -137,4 +190,55 @@ struct FsEntry {
     name: String,
     path: String,
     is_git_repo: bool,
+}
+
+#[derive(Enum, Copy, Clone, Eq, PartialEq)]
+enum DiffStatusKind {
+    Added,
+    Deleted,
+    Modified,
+    Renamed,
+}
+
+fn diff_status(s: git::DiffStatus) -> DiffStatusKind {
+    match s {
+        git::DiffStatus::Added => DiffStatusKind::Added,
+        git::DiffStatus::Deleted => DiffStatusKind::Deleted,
+        git::DiffStatus::Modified => DiffStatusKind::Modified,
+        git::DiffStatus::Renamed => DiffStatusKind::Renamed,
+    }
+}
+
+#[derive(SimpleObject)]
+struct DiffEntry {
+    path: String,
+    status: DiffStatusKind,
+    additions: i32,
+    deletions: i32,
+}
+
+#[derive(SimpleObject)]
+struct DiffLine {
+    origin: String,
+    old_lineno: Option<i32>,
+    new_lineno: Option<i32>,
+    content: String,
+}
+
+#[derive(SimpleObject)]
+struct DiffHunk {
+    header: String,
+    old_start: i32,
+    old_lines: i32,
+    new_start: i32,
+    new_lines: i32,
+    lines: Vec<DiffLine>,
+}
+
+#[derive(SimpleObject)]
+struct FileDiff {
+    path: String,
+    status: DiffStatusKind,
+    is_binary: bool,
+    hunks: Vec<DiffHunk>,
 }
