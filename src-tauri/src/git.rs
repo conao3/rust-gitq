@@ -337,6 +337,186 @@ pub fn diff_file(
     })
 }
 
+pub fn working_tree(repo_path: &str, subpath: Option<&str>) -> Result<Vec<TreeEntry>, String> {
+    let base = std::path::Path::new(repo_path);
+    let dir = match subpath {
+        Some(p) if !p.is_empty() => base.join(p),
+        _ => base.to_path_buf(),
+    };
+
+    let read_dir = std::fs::read_dir(&dir).map_err(|e| e.to_string())?;
+
+    let mut entries: Vec<TreeEntry> = read_dir
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with('.') {
+                return None;
+            }
+            let file_type = entry.file_type().ok()?;
+            let entry_type = if file_type.is_dir() {
+                EntryType::Tree
+            } else if file_type.is_file() {
+                EntryType::Blob
+            } else {
+                return None;
+            };
+            let entry_path = match subpath {
+                Some(p) if !p.is_empty() => format!("{}/{}", p, name),
+                _ => name.clone(),
+            };
+            Some(TreeEntry {
+                name,
+                path: entry_path,
+                entry_type,
+            })
+        })
+        .collect();
+
+    entries.sort_by(|a, b| {
+        let type_order = |e: &TreeEntry| match e.entry_type {
+            EntryType::Tree => 0,
+            EntryType::Blob => 1,
+        };
+        type_order(a)
+            .cmp(&type_order(b))
+            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+    });
+
+    Ok(entries)
+}
+
+pub fn working_file(repo_path: &str, path: &str) -> Result<FileContent, String> {
+    let full_path = std::path::Path::new(repo_path).join(path);
+    let metadata = std::fs::metadata(&full_path).map_err(|e| e.to_string())?;
+    let size = metadata.len() as usize;
+    let bytes = std::fs::read(&full_path).map_err(|e| e.to_string())?;
+    let is_binary = bytes.contains(&0);
+    let content = if is_binary {
+        String::new()
+    } else {
+        String::from_utf8_lossy(&bytes).to_string()
+    };
+
+    Ok(FileContent {
+        path: path.to_string(),
+        content,
+        size,
+        is_binary,
+    })
+}
+
+pub fn compare_with_working(
+    repo: &Repository,
+    base_ref: &str,
+) -> Result<Vec<DiffFileEntry>, String> {
+    let base_tree = resolve_tree(repo, base_ref)?;
+
+    let diff = repo
+        .diff_tree_to_workdir_with_index(Some(&base_tree), None)
+        .map_err(|e| e.message().to_string())?;
+
+    let mut entries: Vec<DiffFileEntry> = diff
+        .deltas()
+        .map(|delta| {
+            let path = delta
+                .new_file()
+                .path()
+                .or_else(|| delta.old_file().path())
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default();
+            DiffFileEntry {
+                path,
+                status: delta_to_status(delta.status()),
+                additions: 0,
+                deletions: 0,
+            }
+        })
+        .collect();
+
+    diff.foreach(
+        &mut |_delta, _| true,
+        None,
+        None,
+        Some(&mut |delta, _hunk, line| {
+            let path = delta
+                .new_file()
+                .path()
+                .or_else(|| delta.old_file().path())
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default();
+            if let Some(entry) = entries.iter_mut().rfind(|e| e.path == path) {
+                match line.origin() {
+                    '+' => entry.additions += 1,
+                    '-' => entry.deletions += 1,
+                    _ => {}
+                }
+            }
+            true
+        }),
+    )
+    .map_err(|e| e.message().to_string())?;
+
+    Ok(entries)
+}
+
+pub fn diff_file_with_working(
+    repo: &Repository,
+    base_ref: &str,
+    path: &str,
+) -> Result<FileDiffInfo, String> {
+    let base_tree = resolve_tree(repo, base_ref)?;
+
+    let mut opts = git2::DiffOptions::new();
+    opts.pathspec(path);
+    let diff = repo
+        .diff_tree_to_workdir_with_index(Some(&base_tree), Some(&mut opts))
+        .map_err(|e| e.message().to_string())?;
+
+    let hunks = std::cell::RefCell::new(Vec::<DiffHunkInfo>::new());
+    let is_binary = std::cell::Cell::new(false);
+    let status = std::cell::Cell::new(DiffStatus::Modified);
+
+    diff.foreach(
+        &mut |delta, _| {
+            is_binary.set(delta.new_file().is_binary() || delta.old_file().is_binary());
+            status.set(delta_to_status(delta.status()));
+            true
+        },
+        Some(&mut |_, _| true),
+        Some(&mut |_, hunk| {
+            hunks.borrow_mut().push(DiffHunkInfo {
+                header: String::from_utf8_lossy(hunk.header()).trim().to_string(),
+                old_start: hunk.old_start(),
+                old_lines: hunk.old_lines(),
+                new_start: hunk.new_start(),
+                new_lines: hunk.new_lines(),
+                lines: Vec::new(),
+            });
+            true
+        }),
+        Some(&mut |_, _, line| {
+            if let Some(current_hunk) = hunks.borrow_mut().last_mut() {
+                current_hunk.lines.push(DiffLineInfo {
+                    origin: line.origin(),
+                    old_lineno: line.old_lineno(),
+                    new_lineno: line.new_lineno(),
+                    content: String::from_utf8_lossy(line.content()).to_string(),
+                });
+            }
+            true
+        }),
+    )
+    .map_err(|e| e.message().to_string())?;
+
+    Ok(FileDiffInfo {
+        path: path.to_string(),
+        status: status.get(),
+        is_binary: is_binary.get(),
+        hunks: hunks.into_inner(),
+    })
+}
+
 pub fn file(repo: &Repository, path: &str, git_ref: Option<&str>) -> Result<FileContent, String> {
     let reference = match git_ref {
         Some(r) => repo.revparse_single(r).map_err(|e| e.message().to_string())?,
