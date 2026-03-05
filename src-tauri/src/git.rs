@@ -216,6 +216,21 @@ pub struct FileDiffInfo {
     pub hunks: Vec<DiffHunkInfo>,
 }
 
+pub fn merge_base(repo: &Repository, ref1: &str, ref2: &str) -> Result<String, String> {
+    let oid1 = repo
+        .revparse_single(ref1)
+        .map_err(|e| e.message().to_string())?
+        .id();
+    let oid2 = repo
+        .revparse_single(ref2)
+        .map_err(|e| e.message().to_string())?
+        .id();
+    let base = repo
+        .merge_base(oid1, oid2)
+        .map_err(|e| e.message().to_string())?;
+    Ok(base.to_string())
+}
+
 fn resolve_tree<'a>(repo: &'a Repository, git_ref: &str) -> Result<git2::Tree<'a>, String> {
     repo.revparse_single(git_ref)
         .map_err(|e| e.message().to_string())?

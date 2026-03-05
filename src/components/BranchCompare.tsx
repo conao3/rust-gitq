@@ -250,6 +250,8 @@ export function BranchCompare({
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [layout, setLayout] = useState<"unified" | "split">("unified");
   const [hideWhitespace, setHideWhitespace] = useState(false);
+  const [useMergeBase, setUseMergeBase] = useState(false);
+  const [resolvedBase, setResolvedBase] = useState<string | null>(null);
 
   useEffect(() => {
     graphql<{ repository: { branches: Branch[] } }>(
@@ -259,21 +261,33 @@ export function BranchCompare({
 
   useEffect(() => {
     if (!compareBase || !compareHead || compareBase === compareHead) {
+      setResolvedBase(null);
       setEntries([]);
       setSelectedFile(null);
       return;
     }
     setLoading(true);
-    graphql<{ repository: { diff: DiffEntry[] } }>(
-      `query Diff($base: String!, $head: String!, $ignoreWhitespace: Boolean) {
-        repository { diff(base: $base, head: $head, ignoreWhitespace: $ignoreWhitespace) { path status additions deletions } }
-      }`,
-      { base: compareBase, head: compareHead, ignoreWhitespace: hideWhitespace },
-    ).then((data) => {
+    const basePromise = useMergeBase && compareHead !== "__working__"
+      ? graphql<{ repository: { mergeBase: string } }>(
+          `query MergeBase($ref1: String!, $ref2: String!) {
+            repository { mergeBase(ref1: $ref1, ref2: $ref2) }
+          }`,
+          { ref1: compareBase, ref2: compareHead },
+        ).then((data) => data.repository.mergeBase)
+      : Promise.resolve(compareBase);
+    basePromise.then((effectiveBase) => {
+      setResolvedBase(useMergeBase ? effectiveBase : null);
+      return graphql<{ repository: { diff: DiffEntry[] } }>(
+        `query Diff($base: String!, $head: String!, $ignoreWhitespace: Boolean) {
+          repository { diff(base: $base, head: $head, ignoreWhitespace: $ignoreWhitespace) { path status additions deletions } }
+        }`,
+        { base: effectiveBase, head: compareHead, ignoreWhitespace: hideWhitespace },
+      );
+    }).then((data) => {
       setEntries(data.repository.diff);
       setLoading(false);
     });
-  }, [compareBase, compareHead, hideWhitespace]);
+  }, [compareBase, compareHead, hideWhitespace, useMergeBase]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -296,6 +310,11 @@ export function BranchCompare({
             {entries.length} changed file{entries.length !== 1 ? "s" : ""}
           </span>
         )}
+        {resolvedBase && (
+          <span className="font-mono text-xs text-neutral-500">
+            base: {resolvedBase.slice(0, 7)}
+          </span>
+        )}
         <div className="ml-auto flex items-center gap-3">
           <div className="flex overflow-hidden rounded border border-neutral-600">
             <button
@@ -311,6 +330,15 @@ export function BranchCompare({
               Split
             </button>
           </div>
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-neutral-400">
+            <input
+              type="checkbox"
+              checked={useMergeBase}
+              onChange={(e) => setUseMergeBase(e.target.checked)}
+              className="accent-neutral-500"
+            />
+            Merge base
+          </label>
           <label className="flex cursor-pointer items-center gap-1.5 text-xs text-neutral-400">
             <input
               type="checkbox"
@@ -363,7 +391,7 @@ export function BranchCompare({
           <div className="min-w-0 flex-1 overflow-y-auto">
             <DiffPanel
               selectedFile={selectedFile}
-              compareBase={compareBase!}
+              compareBase={resolvedBase ?? compareBase!}
               compareHead={compareHead!}
               layout={layout}
               hideWhitespace={hideWhitespace}

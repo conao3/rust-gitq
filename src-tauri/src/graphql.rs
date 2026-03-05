@@ -117,6 +117,15 @@ impl RepositoryObject {
         }
     }
 
+    async fn merge_base(
+        &self,
+        ref1: String,
+        ref2: String,
+    ) -> async_graphql::Result<String> {
+        let repo = git::open(&self.path)?;
+        Ok(git::merge_base(&repo, &ref1, &ref2)?)
+    }
+
     async fn diff(
         &self,
         base: String,
