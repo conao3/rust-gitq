@@ -51,8 +51,9 @@
             librsvg
           ];
 
-          darwinBuildInputs = [
-            pkgs.apple-sdk_14
+          darwinBuildInputs = with pkgs; [
+            apple-sdk_14
+            openssl
           ];
         in
         {
@@ -61,7 +62,8 @@
               rustToolchain
               nodejs
               pnpm
-            ] ++ lib.optionals stdenv.isLinux [ pkg-config ];
+              pkg-config
+            ];
 
             buildInputs =
               if pkgs.stdenv.isLinux then linuxBuildInputs else darwinBuildInputs;
