@@ -12,9 +12,13 @@ export function App() {
   const [viewMode, setViewMode] = useState<"browse" | "compare">("browse" as const);
   const [compareBase, setCompareBase] = useState<string | null>(null);
   const [compareHead, setCompareHead] = useState<string | null>(null);
+  const [browserPath, setBrowserPath] = useState<string | null>(null);
 
   if (!repoPath) {
-    return <DirBrowser onOpenRepo={setRepoPath} />;
+    return <DirBrowser initialPath={browserPath} onOpenRepo={(path) => {
+      setBrowserPath(path.split("/").slice(0, -1).join("/") || "/");
+      setRepoPath(path);
+    }} />;
   }
 
   return (

@@ -4,11 +4,13 @@ import { graphql } from "../graphql";
 type FsEntry = { name: string; path: string; isGitRepo: boolean };
 
 export function DirBrowser({
+  initialPath,
   onOpenRepo,
 }: {
+  initialPath?: string | null;
   onOpenRepo: (path: string) => void;
 }) {
-  const [currentPath, setCurrentPath] = useState<string | null>(null);
+  const [currentPath, setCurrentPath] = useState<string | null>(initialPath ?? null);
   const [entries, setEntries] = useState<FsEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,7 +19,7 @@ export function DirBrowser({
     graphql<{ homePath: string }>(`{ homePath }`).then((data) =>
       setCurrentPath(data.homePath),
     );
-  }, []);
+  }, [currentPath]);
 
   useEffect(() => {
     if (!currentPath) return;
