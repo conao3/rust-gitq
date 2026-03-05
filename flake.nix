@@ -51,10 +51,8 @@
             librsvg
           ];
 
-          darwinBuildInputs = with pkgs; [
-            darwin.apple_sdk.frameworks.WebKit
-            darwin.apple_sdk.frameworks.AppKit
-            darwin.apple_sdk.frameworks.CoreServices
+          darwinBuildInputs = [
+            pkgs.apple-sdk_11
           ];
         in
         {
