@@ -121,14 +121,15 @@ impl RepositoryObject {
         &self,
         base: String,
         head: String,
+        ignore_whitespace: Option<bool>,
     ) -> async_graphql::Result<Vec<DiffEntry>> {
         let repo = git::open(&self.path)?;
         let files = if head == WORKING_SENTINEL {
-            git::compare_with_working(&repo, &base)?
+            git::compare_with_working(&repo, &base, ignore_whitespace.unwrap_or(false))?
         } else if base == WORKING_SENTINEL {
             return Err("base cannot be __working__".into());
         } else {
-            git::compare_branches(&repo, &base, &head)?
+            git::compare_branches(&repo, &base, &head, ignore_whitespace.unwrap_or(false))?
         };
         Ok(files
             .into_iter()
@@ -146,14 +147,15 @@ impl RepositoryObject {
         base: String,
         head: String,
         path: String,
+        ignore_whitespace: Option<bool>,
     ) -> async_graphql::Result<FileDiff> {
         let repo = git::open(&self.path)?;
         let info = if head == WORKING_SENTINEL {
-            git::diff_file_with_working(&repo, &base, &path)?
+            git::diff_file_with_working(&repo, &base, &path, ignore_whitespace.unwrap_or(false))?
         } else if base == WORKING_SENTINEL {
             return Err("base cannot be __working__".into());
         } else {
-            git::diff_file(&repo, &base, &head, &path)?
+            git::diff_file(&repo, &base, &head, &path, ignore_whitespace.unwrap_or(false))?
         };
         Ok(FileDiff {
             path: info.path,

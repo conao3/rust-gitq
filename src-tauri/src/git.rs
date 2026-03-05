@@ -236,12 +236,15 @@ pub fn compare_branches(
     repo: &Repository,
     base_ref: &str,
     head_ref: &str,
+    ignore_whitespace: bool,
 ) -> Result<Vec<DiffFileEntry>, String> {
     let base_tree = resolve_tree(repo, base_ref)?;
     let head_tree = resolve_tree(repo, head_ref)?;
 
+    let mut opts = git2::DiffOptions::new();
+    opts.ignore_whitespace(ignore_whitespace);
     let diff = repo
-        .diff_tree_to_tree(Some(&base_tree), Some(&head_tree), None)
+        .diff_tree_to_tree(Some(&base_tree), Some(&head_tree), Some(&mut opts))
         .map_err(|e| e.message().to_string())?;
 
     let mut entries: Vec<DiffFileEntry> = diff
@@ -296,12 +299,14 @@ pub fn diff_file(
     base_ref: &str,
     head_ref: &str,
     path: &str,
+    ignore_whitespace: bool,
 ) -> Result<FileDiffInfo, String> {
     let base_tree = resolve_tree(repo, base_ref)?;
     let head_tree = resolve_tree(repo, head_ref)?;
 
     let mut opts = git2::DiffOptions::new();
     opts.pathspec(path);
+    opts.ignore_whitespace(ignore_whitespace);
     let diff = repo
         .diff_tree_to_tree(Some(&base_tree), Some(&head_tree), Some(&mut opts))
         .map_err(|e| e.message().to_string())?;
@@ -422,11 +427,14 @@ pub fn working_file(repo_path: &str, path: &str) -> Result<FileContent, String> 
 pub fn compare_with_working(
     repo: &Repository,
     base_ref: &str,
+    ignore_whitespace: bool,
 ) -> Result<Vec<DiffFileEntry>, String> {
     let base_tree = resolve_tree(repo, base_ref)?;
 
+    let mut opts = git2::DiffOptions::new();
+    opts.ignore_whitespace(ignore_whitespace);
     let diff = repo
-        .diff_tree_to_workdir_with_index(Some(&base_tree), None)
+        .diff_tree_to_workdir_with_index(Some(&base_tree), Some(&mut opts))
         .map_err(|e| e.message().to_string())?;
 
     let mut entries: Vec<DiffFileEntry> = diff
@@ -477,11 +485,13 @@ pub fn diff_file_with_working(
     repo: &Repository,
     base_ref: &str,
     path: &str,
+    ignore_whitespace: bool,
 ) -> Result<FileDiffInfo, String> {
     let base_tree = resolve_tree(repo, base_ref)?;
 
     let mut opts = git2::DiffOptions::new();
     opts.pathspec(path);
+    opts.ignore_whitespace(ignore_whitespace);
     let diff = repo
         .diff_tree_to_workdir_with_index(Some(&base_tree), Some(&mut opts))
         .map_err(|e| e.message().to_string())?;
