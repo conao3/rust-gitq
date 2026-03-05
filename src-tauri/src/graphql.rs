@@ -5,6 +5,8 @@ use crate::git;
 
 pub type GitqSchema = Schema<QueryRoot, EmptyMutation, EmptySubscription>;
 
+const WORKING_SENTINEL: &str = "__working__";
+
 pub struct AppState {
     pub repo_path: RwLock<Option<String>>,
 }
@@ -73,8 +75,13 @@ impl RepositoryObject {
         path: Option<String>,
         r#ref: Option<String>,
     ) -> async_graphql::Result<Vec<TreeEntry>> {
-        let repo = git::open(&self.path)?;
-        Ok(git::tree(&repo, path.as_deref(), r#ref.as_deref())?
+        let entries = if r#ref.as_deref() == Some(WORKING_SENTINEL) {
+            git::working_tree(&self.path, path.as_deref())?
+        } else {
+            let repo = git::open(&self.path)?;
+            git::tree(&repo, path.as_deref(), r#ref.as_deref())?
+        };
+        Ok(entries
             .into_iter()
             .map(|e| TreeEntry {
                 name: e.name,
@@ -92,8 +99,13 @@ impl RepositoryObject {
         path: String,
         r#ref: Option<String>,
     ) -> async_graphql::Result<Option<FileContent>> {
-        let repo = git::open(&self.path)?;
-        match git::file(&repo, &path, r#ref.as_deref()) {
+        let result = if r#ref.as_deref() == Some(WORKING_SENTINEL) {
+            git::working_file(&self.path, &path)
+        } else {
+            let repo = git::open(&self.path)?;
+            git::file(&repo, &path, r#ref.as_deref())
+        };
+        match result {
             Ok(f) => Ok(Some(FileContent {
                 path: f.path,
                 content: f.content,
@@ -110,7 +122,14 @@ impl RepositoryObject {
         head: String,
     ) -> async_graphql::Result<Vec<DiffEntry>> {
         let repo = git::open(&self.path)?;
-        Ok(git::compare_branches(&repo, &base, &head)?
+        let files = if head == WORKING_SENTINEL {
+            git::compare_with_working(&repo, &base)?
+        } else if base == WORKING_SENTINEL {
+            return Err("base cannot be __working__".into());
+        } else {
+            git::compare_branches(&repo, &base, &head)?
+        };
+        Ok(files
             .into_iter()
             .map(|e| DiffEntry {
                 path: e.path,
@@ -128,7 +147,13 @@ impl RepositoryObject {
         path: String,
     ) -> async_graphql::Result<FileDiff> {
         let repo = git::open(&self.path)?;
-        let info = git::diff_file(&repo, &base, &head, &path)?;
+        let info = if head == WORKING_SENTINEL {
+            git::diff_file_with_working(&repo, &base, &path)?
+        } else if base == WORKING_SENTINEL {
+            return Err("base cannot be __working__".into());
+        } else {
+            git::diff_file(&repo, &base, &head, &path)?
+        };
         Ok(FileDiff {
             path: info.path,
             status: diff_status(info.status),
