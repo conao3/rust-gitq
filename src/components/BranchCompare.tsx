@@ -42,13 +42,14 @@ export function BranchCompare({
   const [hideWhitespace, setHideWhitespace] = useState(false);
   const [useMergeBase, setUseMergeBase] = useState(false);
 
-  const { data: branches = [] } = useQuery({
+  const { data: branchData } = useQuery({
     queryKey: ["branches"],
     queryFn: () =>
-      graphql<{ repository: { branches: Branch[] } }>(
-        `{ repository { branches { name isHead remote } } }`,
-      ).then((d) => d.repository.branches),
+      graphql<{ repository: { currentBranch: string; branches: Branch[] } }>(
+        `{ repository { currentBranch branches { name isHead remote } } }`,
+      ).then((d) => d.repository),
   });
+  const branches = branchData?.branches ?? [];
 
   const { data: mergeBaseOid } = useQuery({
     queryKey: ["mergeBase", compareBase, compareHead],

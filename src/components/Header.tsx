@@ -32,17 +32,17 @@ export function Header({
     queryKey: ["branches"],
     queryFn: () => graphql<RepoData>(
       `{ repository { currentBranch branches { name isHead remote } } }`,
-    ),
+    ).then((d) => d.repository),
   });
 
   useEffect(() => {
     if (data && !currentRef) {
-      onBranchChange(data.repository.currentBranch);
+      onBranchChange(data.currentBranch);
     }
   }, [data, currentRef, onBranchChange]);
 
   const repoName = repoPath.split("/").pop() || repoPath;
-  const branches = data?.repository.branches ?? [];
+  const branches = data?.branches ?? [];
 
   return (
     <div className="flex items-center gap-4 border-b border-neutral-700 bg-neutral-800 px-4 py-2">
