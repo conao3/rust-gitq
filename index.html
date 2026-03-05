@@ -9,6 +9,12 @@
         var s = document.createElement("script");
         s.src = "http://localhost:8097";
         document.head.appendChild(s);
+        document.addEventListener("keydown", function (e) {
+          if ((e.metaKey || e.ctrlKey) && e.key === "r") {
+            e.preventDefault();
+            location.reload();
+          }
+        });
       }
     </script>
   </head>
