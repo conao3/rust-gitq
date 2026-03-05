@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { graphql } from "../graphql";
+import { BranchSelect } from "./BranchSelect";
 
-type Branch = { name: string; isHead: boolean };
+type Branch = { name: string; isHead: boolean; remote: string | null };
 type DiffEntry = {
   path: string;
   status: "ADDED" | "DELETED" | "MODIFIED" | "RENAMED";
@@ -137,7 +138,7 @@ export function BranchCompare({
 
   useEffect(() => {
     graphql<{ repository: { branches: Branch[] } }>(
-      `{ repository { branches { name isHead } } }`,
+      `{ repository { branches { name isHead remote } } }`,
     ).then((data) => setBranches(data.repository.branches));
   }, []);
 
@@ -161,33 +162,19 @@ export function BranchCompare({
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <div className="flex items-center gap-3 border-b border-neutral-700 bg-neutral-800 px-4 py-2 text-sm">
-        <select
-          value={compareBase || ""}
-          onChange={(e) => onBaseChange(e.target.value)}
-          className="rounded border border-neutral-600 bg-neutral-700 px-2 py-1"
-        >
-          <option value="">base...</option>
-          <option value="__working__" style={{ fontStyle: "italic" }}>working</option>
-          {branches.map((b) => (
-            <option key={b.name} value={b.name}>
-              {b.name}
-            </option>
-          ))}
-        </select>
+        <BranchSelect
+          value={compareBase}
+          onChange={onBaseChange}
+          branches={branches}
+          placeholder="base..."
+        />
         <span className="text-neutral-500">...</span>
-        <select
-          value={compareHead || ""}
-          onChange={(e) => onHeadChange(e.target.value)}
-          className="rounded border border-neutral-600 bg-neutral-700 px-2 py-1"
-        >
-          <option value="">head...</option>
-          <option value="__working__" style={{ fontStyle: "italic" }}>working</option>
-          {branches.map((b) => (
-            <option key={b.name} value={b.name}>
-              {b.name}
-            </option>
-          ))}
-        </select>
+        <BranchSelect
+          value={compareHead}
+          onChange={onHeadChange}
+          branches={branches}
+          placeholder="head..."
+        />
         {entries.length > 0 && (
           <span className="text-neutral-400">
             {entries.length} changed file{entries.length !== 1 ? "s" : ""}

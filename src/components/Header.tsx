@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { graphql } from "../graphql";
+import { BranchSelect } from "./BranchSelect";
 
-type Branch = { name: string; isHead: boolean };
+type Branch = { name: string; isHead: boolean; remote: string | null };
 type RepoData = {
   repository: {
     currentBranch: string;
@@ -30,7 +31,7 @@ export function Header({
 
   useEffect(() => {
     graphql<RepoData>(
-      `{ repository { currentBranch branches { name isHead } } }`,
+      `{ repository { currentBranch branches { name isHead remote } } }`,
     ).then((data) => {
       setBranches(data.repository.branches);
       if (!currentRef) {
@@ -49,18 +50,11 @@ export function Header({
       </button>
       <span className="font-semibold">{repoName}</span>
       {viewMode === "browse" && (
-        <select
-          value={currentRef || ""}
-          onChange={(e) => onBranchChange(e.target.value)}
-          className="rounded border border-neutral-600 bg-neutral-700 px-2 py-1 text-sm"
-        >
-          <option value="__working__" style={{ fontStyle: "italic" }}>working</option>
-          {branches.map((b) => (
-            <option key={b.name} value={b.name}>
-              {b.name}
-            </option>
-          ))}
-        </select>
+        <BranchSelect
+          value={currentRef}
+          onChange={onBranchChange}
+          branches={branches}
+        />
       )}
       <button
         onClick={onToggleCompare}

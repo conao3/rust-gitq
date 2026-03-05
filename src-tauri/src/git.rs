@@ -61,30 +61,43 @@ pub fn current_branch(repo: &Repository) -> Result<String, String> {
 pub struct BranchInfo {
     pub name: String,
     pub is_head: bool,
+    pub remote: Option<String>,
 }
 
 pub fn branches(repo: &Repository) -> Result<Vec<BranchInfo>, String> {
-    let branches = repo
-        .branches(Some(git2::BranchType::Local))
+    let all = repo
+        .branches(None)
         .map_err(|e| e.message().to_string())?;
 
     let head_name = current_branch(repo).unwrap_or_default();
 
-    branches
+    let mut result: Vec<BranchInfo> = all
         .filter_map(|b| b.ok())
-        .map(|(branch, _)| {
-            let name = branch
-                .name()
-                .ok()
-                .flatten()
-                .unwrap_or("unknown")
-                .to_string();
-            Ok(BranchInfo {
-                is_head: name == head_name,
+        .filter_map(|(branch, branch_type)| {
+            let name = branch.name().ok().flatten()?.to_string();
+            let remote = match branch_type {
+                git2::BranchType::Remote => {
+                    let r = name.split('/').next().unwrap_or("").to_string();
+                    Some(r)
+                }
+                git2::BranchType::Local => None,
+            };
+            Some(BranchInfo {
+                is_head: branch_type == git2::BranchType::Local && name == head_name,
                 name,
+                remote,
             })
         })
-        .collect()
+        .collect();
+
+    result.sort_by(|a, b| {
+        a.remote
+            .is_some()
+            .cmp(&b.remote.is_some())
+            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+    });
+
+    Ok(result)
 }
 
 pub enum EntryType {

@@ -66,6 +66,7 @@ impl RepositoryObject {
             .map(|b| Branch {
                 name: b.name,
                 is_head: b.is_head,
+                remote: b.remote,
             })
             .collect())
     }
@@ -187,6 +188,7 @@ impl RepositoryObject {
 struct Branch {
     name: String,
     is_head: bool,
+    remote: Option<String>,
 }
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
