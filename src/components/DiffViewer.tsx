@@ -161,12 +161,14 @@ export function DiffPanel({
   compareHead,
   layout,
   hideWhitespace,
+  refreshKey,
 }: {
   selectedFile: string | null;
   compareBase: string;
   compareHead: string;
   layout: "unified" | "split";
   hideWhitespace: boolean;
+  refreshKey?: number;
 }) {
   const [diff, setDiff] = useState<FileDiff | null>(null);
   const [loading, setLoading] = useState(false);
@@ -191,7 +193,7 @@ export function DiffPanel({
       setDiff(data.repository.diffFile);
       setLoading(false);
     });
-  }, [selectedFile, compareBase, compareHead, hideWhitespace]);
+  }, [selectedFile, compareBase, compareHead, hideWhitespace, refreshKey]);
 
   if (!selectedFile) {
     return (

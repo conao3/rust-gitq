@@ -196,6 +196,7 @@ export function BranchCompare({
               compareHead={compareHead!}
               layout={layout}
               hideWhitespace={hideWhitespace}
+              refreshKey={refreshKey}
             />
           </div>
         </div>
