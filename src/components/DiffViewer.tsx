@@ -166,7 +166,6 @@ export function DiffPanel({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    void refreshKey;
     if (!selectedFile) {
       setDiff(null);
       return;
@@ -186,7 +185,7 @@ export function DiffPanel({
       setDiff(data.repository.diffFile);
       setLoading(false);
     });
-  });
+  }, [selectedFile, compareBase, compareHead, hideWhitespace, refreshKey]);
 
   if (!selectedFile) {
     return (

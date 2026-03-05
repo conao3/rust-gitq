@@ -50,13 +50,13 @@ export function BranchCompare({
     graphql<{ repository: { branches: Branch[] } }>(
       `{ repository { branches { name isHead remote } } }`,
     ).then((data) => setBranches(data.repository.branches));
-  });
+  }, []);
 
   useEffect(() => {
     if (compareHead !== "__working__") return;
     const id = setInterval(() => setRefreshKey((k) => k + 1), 2000);
     return () => clearInterval(id);
-  });
+  }, [compareHead]);
 
   useEffect(() => {
     if (!compareBase || !compareHead || compareBase === compareHead) {
@@ -88,7 +88,7 @@ export function BranchCompare({
       setEntries(data.repository.diff);
       setLoading(false);
     });
-  });
+  }, [compareBase, compareHead, hideWhitespace, useMergeBase, refreshKey]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

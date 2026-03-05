@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { graphql } from "../graphql";
 import { BranchSelect } from "./BranchSelect";
 
@@ -28,24 +28,19 @@ export function Header({
   onViewModeChange: (mode: ViewMode) => void;
 }) {
   const [branches, setBranches] = useState<Branch[]>([]);
-  const currentRefRef = useRef(currentRef);
-  currentRefRef.current = currentRef;
-  const onBranchChangeRef = useRef(onBranchChange);
-  onBranchChangeRef.current = onBranchChange;
 
   const repoName = repoPath.split("/").pop() || repoPath;
 
   useEffect(() => {
-    void repoPath;
     graphql<RepoData>(
       `{ repository { currentBranch branches { name isHead remote } } }`,
     ).then((data) => {
       setBranches(data.repository.branches);
-      if (!currentRefRef.current) {
-        onBranchChangeRef.current(data.repository.currentBranch);
+      if (!currentRef) {
+        onBranchChange(data.repository.currentBranch);
       }
     });
-  });
+  }, [repoPath]);
 
   return (
     <div className="flex items-center gap-4 border-b border-neutral-700 bg-neutral-800 px-4 py-2">

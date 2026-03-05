@@ -216,7 +216,7 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
     setDiffEntries([]);
     setSelectedFile(null);
     fetchLog(0, false);
-  });
+  }, [currentRef]);
 
   useEffect(() => {
     if (!selectedCommit) {
@@ -239,7 +239,7 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
         setSelectedFile(data.repository.diff[0].path);
       }
     });
-  });
+  }, [selectedCommit]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
