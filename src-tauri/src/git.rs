@@ -5,7 +5,7 @@ pub fn open(path: &str) -> Result<Repository, String> {
 }
 
 pub fn is_git_repo(path: &str) -> bool {
-    Repository::open(path).is_ok()
+    std::path::Path::new(path).join(".git").exists()
 }
 
 pub struct DirEntry {
