@@ -167,6 +167,7 @@ export function BranchCompare({
           className="rounded border border-neutral-600 bg-neutral-700 px-2 py-1"
         >
           <option value="">base...</option>
+          <option value="__working__" style={{ fontStyle: "italic" }}>working</option>
           {branches.map((b) => (
             <option key={b.name} value={b.name}>
               {b.name}
@@ -180,6 +181,7 @@ export function BranchCompare({
           className="rounded border border-neutral-600 bg-neutral-700 px-2 py-1"
         >
           <option value="">head...</option>
+          <option value="__working__" style={{ fontStyle: "italic" }}>working</option>
           {branches.map((b) => (
             <option key={b.name} value={b.name}>
               {b.name}
