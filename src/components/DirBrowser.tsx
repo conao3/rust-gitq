@@ -10,6 +10,7 @@ export function DirBrowser({
 }) {
   const [currentPath, setCurrentPath] = useState<string | null>(null);
   const [entries, setEntries] = useState<FsEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (currentPath) return;
@@ -20,10 +21,14 @@ export function DirBrowser({
 
   useEffect(() => {
     if (!currentPath) return;
+    setLoading(true);
     graphql<{ listDirectory: FsEntry[] }>(
       `query ListDir($path: String!) { listDirectory(path: $path) { name path isGitRepo } }`,
       { path: currentPath },
-    ).then((data) => setEntries(data.listDirectory));
+    ).then((data) => {
+      setEntries(data.listDirectory);
+      setLoading(false);
+    });
   }, [currentPath]);
 
   const pathSegments = currentPath?.split("/").filter(Boolean) || [];
@@ -31,6 +36,7 @@ export function DirBrowser({
   const navigateTo = (path: string) => {
     setCurrentPath(path);
     setEntries([]);
+    setLoading(true);
   };
 
   const handleClick = async (entry: FsEntry) => {
@@ -78,6 +84,12 @@ export function DirBrowser({
             className="flex cursor-pointer items-center gap-3 border-b border-neutral-800 px-4 py-2 text-sm hover:bg-neutral-800"
           >
             <span className="text-neutral-500">..</span>
+          </div>
+        )}
+        {loading && (
+          <div className="flex items-center gap-2 px-4 py-3 text-sm text-neutral-400">
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-neutral-600 border-t-neutral-300" />
+            Loading...
           </div>
         )}
         {entries.map((entry) => (
