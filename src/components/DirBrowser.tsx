@@ -19,7 +19,7 @@ export function DirBrowser({
     graphql<{ homePath: string }>(`{ homePath }`).then((data) =>
       setCurrentPath(data.homePath),
     );
-  }, [currentPath]);
+  });
 
   useEffect(() => {
     if (!currentPath) return;
@@ -31,7 +31,7 @@ export function DirBrowser({
       setEntries(data.listDirectory);
       setLoading(false);
     });
-  }, [currentPath]);
+  });
 
   const pathSegments = currentPath?.split("/").filter(Boolean) || [];
 

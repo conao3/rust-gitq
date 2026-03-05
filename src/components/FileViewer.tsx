@@ -135,7 +135,7 @@ export function FileViewer({
         setContent(null);
       }
     });
-  }, [filePath, currentRef]);
+  });
 
   useEffect(() => {
     if (!content || !filePath || isBinary) return;
@@ -160,7 +160,7 @@ export function FileViewer({
       );
     });
     return () => { cancelled = true; };
-  }, [content, filePath, isBinary]);
+  });
 
   if (!filePath) {
     return (
