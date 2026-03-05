@@ -182,10 +182,11 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedCommit, setSelectedCommit] = useState<CommitNode | null>(null);
-  const [graphRows, setGraphRows] = useState<GraphRow[]>([]);
   const [diffEntries, setDiffEntries] = useState<DiffEntry[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [layout, setLayout] = useState<"unified" | "split">("unified");
+
+  const graphRows = calculateGraph(commits);
 
   const fetchLog = (skip: number, append: boolean) => {
     setLoading(true);
@@ -203,12 +204,8 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
       }`,
       { ref: currentRef, skip, limit: 50 },
     ).then((data) => {
-      const newCommits = append
-        ? [...commits, ...data.repository.log.commits]
-        : data.repository.log.commits;
-      setCommits(newCommits);
+      setCommits((prev) => append ? [...prev, ...data.repository.log.commits] : data.repository.log.commits);
       setHasMore(data.repository.log.hasMore);
-      setGraphRows(calculateGraph(newCommits));
       setLoading(false);
     });
   };
@@ -219,7 +216,7 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
     setDiffEntries([]);
     setSelectedFile(null);
     fetchLog(0, false);
-  }, [currentRef]);
+  });
 
   useEffect(() => {
     if (!selectedCommit) {
@@ -242,7 +239,7 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
         setSelectedFile(data.repository.diff[0].path);
       }
     });
-  }, [selectedCommit]);
+  });
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
