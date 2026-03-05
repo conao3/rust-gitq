@@ -10,20 +10,22 @@ type RepoData = {
   };
 };
 
+export type ViewMode = "browse" | "history" | "compare";
+
 export function Header({
   repoPath,
   currentRef,
   viewMode,
   onBranchChange,
   onChangeRepo,
-  onToggleCompare,
+  onViewModeChange,
 }: {
   repoPath: string;
   currentRef: string | null;
-  viewMode: "browse" | "compare";
+  viewMode: ViewMode;
   onBranchChange: (ref: string) => void;
   onChangeRepo: () => void;
-  onToggleCompare: () => void;
+  onViewModeChange: (mode: ViewMode) => void;
 }) {
   const [branches, setBranches] = useState<Branch[]>([]);
 
@@ -46,7 +48,7 @@ export function Header({
         onClick={onChangeRepo}
         className="rounded border border-neutral-600 px-2 py-1 text-sm hover:bg-neutral-700"
       >
-        ← Back
+        &larr; Back
       </button>
       <span className="font-semibold">{repoName}</span>
       {viewMode === "browse" && (
@@ -56,16 +58,21 @@ export function Header({
           branches={branches}
         />
       )}
-      <button
-        onClick={onToggleCompare}
-        className={`rounded border px-2 py-1 text-sm ${
-          viewMode === "compare"
-            ? "border-blue-500 bg-blue-600 text-white"
-            : "border-neutral-600 hover:bg-neutral-700"
-        }`}
-      >
-        {viewMode === "compare" ? "Browse" : "Compare"}
-      </button>
+      <div className="flex overflow-hidden rounded border border-neutral-600">
+        {(["browse", "history", "compare"] as const).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => onViewModeChange(mode)}
+            className={`px-2.5 py-1 text-xs capitalize ${
+              viewMode === mode
+                ? "bg-neutral-600 text-neutral-200"
+                : "text-neutral-400 hover:bg-neutral-700"
+            }`}
+          >
+            {mode}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

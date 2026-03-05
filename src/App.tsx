@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { DirBrowser } from "./components/DirBrowser";
-import { Header } from "./components/Header";
+import { Header, type ViewMode } from "./components/Header";
 import { FileTree } from "./components/FileTree";
 import { FileViewer } from "./components/FileViewer";
 import { BranchCompare } from "./components/BranchCompare";
+import { CommitHistory } from "./components/CommitHistory";
 
 export function App() {
   const [repoPath, setRepoPath] = useState<string | null>(null);
   const [currentRef, setCurrentRef] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"browse" | "compare">("browse" as const);
+  const [viewMode, setViewMode] = useState<ViewMode>("browse");
   const [compareBase, setCompareBase] = useState<string | null>(null);
   const [compareHead, setCompareHead] = useState<string | null>(null);
   const [browserPath, setBrowserPath] = useState<string | null>(null);
@@ -32,19 +33,19 @@ export function App() {
           setRepoPath(null);
           setSelectedFile(null);
           setCurrentRef(null);
-          setViewMode("browse" as const);
+          setViewMode("browse");
         }}
-        onToggleCompare={() => {
-          if (viewMode === "browse") {
-            setViewMode("compare" as const);
+        onViewModeChange={(mode) => {
+          if (mode === "compare") {
             setCompareBase(currentRef);
             setCompareHead("__working__");
-          } else {
-            setViewMode("browse" as const);
           }
+          setViewMode(mode);
         }}
       />
-      {viewMode === "compare" ? (
+      {viewMode === "history" ? (
+        <CommitHistory currentRef={currentRef} />
+      ) : viewMode === "compare" ? (
         <BranchCompare
           compareBase={compareBase}
           compareHead={compareHead}
