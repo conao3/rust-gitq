@@ -165,6 +165,178 @@ pub struct FileContent {
     pub is_binary: bool,
 }
 
+#[derive(Copy, Clone)]
+pub enum DiffStatus {
+    Added,
+    Deleted,
+    Modified,
+    Renamed,
+}
+
+pub struct DiffFileEntry {
+    pub path: String,
+    pub status: DiffStatus,
+    pub additions: usize,
+    pub deletions: usize,
+}
+
+pub struct DiffLineInfo {
+    pub origin: char,
+    pub old_lineno: Option<u32>,
+    pub new_lineno: Option<u32>,
+    pub content: String,
+}
+
+pub struct DiffHunkInfo {
+    pub header: String,
+    pub old_start: u32,
+    pub old_lines: u32,
+    pub new_start: u32,
+    pub new_lines: u32,
+    pub lines: Vec<DiffLineInfo>,
+}
+
+pub struct FileDiffInfo {
+    pub path: String,
+    pub status: DiffStatus,
+    pub is_binary: bool,
+    pub hunks: Vec<DiffHunkInfo>,
+}
+
+fn resolve_tree<'a>(repo: &'a Repository, git_ref: &str) -> Result<git2::Tree<'a>, String> {
+    repo.revparse_single(git_ref)
+        .map_err(|e| e.message().to_string())?
+        .peel_to_tree()
+        .map_err(|e| e.message().to_string())
+}
+
+fn delta_to_status(delta: git2::Delta) -> DiffStatus {
+    match delta {
+        git2::Delta::Added => DiffStatus::Added,
+        git2::Delta::Deleted => DiffStatus::Deleted,
+        git2::Delta::Renamed => DiffStatus::Renamed,
+        _ => DiffStatus::Modified,
+    }
+}
+
+pub fn compare_branches(
+    repo: &Repository,
+    base_ref: &str,
+    head_ref: &str,
+) -> Result<Vec<DiffFileEntry>, String> {
+    let base_tree = resolve_tree(repo, base_ref)?;
+    let head_tree = resolve_tree(repo, head_ref)?;
+
+    let diff = repo
+        .diff_tree_to_tree(Some(&base_tree), Some(&head_tree), None)
+        .map_err(|e| e.message().to_string())?;
+
+    let mut entries: Vec<DiffFileEntry> = diff
+        .deltas()
+        .map(|delta| {
+            let path = delta
+                .new_file()
+                .path()
+                .or_else(|| delta.old_file().path())
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default();
+            DiffFileEntry {
+                path,
+                status: delta_to_status(delta.status()),
+                additions: 0,
+                deletions: 0,
+            }
+        })
+        .collect();
+
+    let stats = diff.stats().map_err(|e| e.message().to_string())?;
+    let _ = stats;
+
+    diff.foreach(
+        &mut |_delta, _| true,
+        None,
+        None,
+        Some(&mut |delta, _hunk, line| {
+            let path = delta
+                .new_file()
+                .path()
+                .or_else(|| delta.old_file().path())
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default();
+            if let Some(entry) = entries.iter_mut().rfind(|e| e.path == path) {
+                match line.origin() {
+                    '+' => entry.additions += 1,
+                    '-' => entry.deletions += 1,
+                    _ => {}
+                }
+            }
+            true
+        }),
+    )
+    .map_err(|e| e.message().to_string())?;
+
+    Ok(entries)
+}
+
+pub fn diff_file(
+    repo: &Repository,
+    base_ref: &str,
+    head_ref: &str,
+    path: &str,
+) -> Result<FileDiffInfo, String> {
+    let base_tree = resolve_tree(repo, base_ref)?;
+    let head_tree = resolve_tree(repo, head_ref)?;
+
+    let mut opts = git2::DiffOptions::new();
+    opts.pathspec(path);
+    let diff = repo
+        .diff_tree_to_tree(Some(&base_tree), Some(&head_tree), Some(&mut opts))
+        .map_err(|e| e.message().to_string())?;
+
+    let hunks = std::cell::RefCell::new(Vec::<DiffHunkInfo>::new());
+    let is_binary = std::cell::Cell::new(false);
+    let status = std::cell::Cell::new(DiffStatus::Modified);
+
+    diff.foreach(
+        &mut |delta, _| {
+            is_binary.set(delta.new_file().is_binary() || delta.old_file().is_binary());
+            status.set(delta_to_status(delta.status()));
+            true
+        },
+        Some(&mut |_, _| true),
+        Some(&mut |_, hunk| {
+            hunks.borrow_mut().push(DiffHunkInfo {
+                header: String::from_utf8_lossy(hunk.header()).trim().to_string(),
+                old_start: hunk.old_start(),
+                old_lines: hunk.old_lines(),
+                new_start: hunk.new_start(),
+                new_lines: hunk.new_lines(),
+                lines: Vec::new(),
+            });
+            true
+        }),
+        Some(&mut |_, _, line| {
+            if let Some(current_hunk) = hunks.borrow_mut().last_mut() {
+                current_hunk.lines.push(DiffLineInfo {
+                    origin: line.origin(),
+                    old_lineno: line.old_lineno(),
+                    new_lineno: line.new_lineno(),
+                    content: String::from_utf8_lossy(line.content()).to_string(),
+                });
+            }
+            true
+        }),
+    )
+    .map_err(|e| e.message().to_string())?;
+
+    Ok(FileDiffInfo {
+        path: path.to_string(),
+        status: status.get(),
+        is_binary: is_binary.get(),
+        hunks: hunks.into_inner(),
+    })
+}
+
 pub fn file(repo: &Repository, path: &str, git_ref: Option<&str>) -> Result<FileContent, String> {
     let reference = match git_ref {
         Some(r) => repo.revparse_single(r).map_err(|e| e.message().to_string())?,
