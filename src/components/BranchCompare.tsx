@@ -44,6 +44,7 @@ export function BranchCompare({
   const [hideWhitespace, setHideWhitespace] = useState(false);
   const [useMergeBase, setUseMergeBase] = useState(false);
   const [resolvedBase, setResolvedBase] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     graphql<{ repository: { branches: Branch[] } }>(
@@ -52,13 +53,21 @@ export function BranchCompare({
   }, []);
 
   useEffect(() => {
+    if (compareHead !== "__working__") return;
+    const id = setInterval(() => setRefreshKey((k) => k + 1), 2000);
+    return () => clearInterval(id);
+  }, [compareHead]);
+
+  useEffect(() => {
     if (!compareBase || !compareHead || compareBase === compareHead) {
       setResolvedBase(null);
       setEntries([]);
       setSelectedFile(null);
       return;
     }
-    setLoading(true);
+    if (refreshKey === 0 || compareHead === "__working__") {
+      setLoading((prev) => refreshKey === 0 ? true : prev);
+    }
     const basePromise = useMergeBase && compareHead !== "__working__"
       ? graphql<{ repository: { mergeBase: string } }>(
           `query MergeBase($ref1: String!, $ref2: String!) {
@@ -79,7 +88,7 @@ export function BranchCompare({
       setEntries(data.repository.diff);
       setLoading(false);
     });
-  }, [compareBase, compareHead, hideWhitespace, useMergeBase]);
+  }, [compareBase, compareHead, hideWhitespace, useMergeBase, refreshKey]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
