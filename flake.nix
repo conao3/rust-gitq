@@ -52,7 +52,7 @@
           ];
 
           darwinBuildInputs = [
-            pkgs.apple-sdk_11
+            pkgs.apple-sdk_12
           ];
         in
         {
