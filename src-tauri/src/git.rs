@@ -555,6 +555,116 @@ pub fn diff_file_with_working(
     })
 }
 
+pub struct CommitInfo {
+    pub oid: String,
+    pub short_id: String,
+    pub message: String,
+    pub author_name: String,
+    pub author_email: String,
+    pub author_time: i64,
+    pub parent_ids: Vec<String>,
+}
+
+#[derive(Copy, Clone)]
+pub enum DecorKind {
+    LocalBranch,
+    RemoteBranch,
+    Tag,
+    Head,
+}
+
+pub struct Decoration {
+    pub oid: String,
+    pub name: String,
+    pub kind: DecorKind,
+}
+
+pub fn commit_log(
+    repo: &Repository,
+    git_ref: Option<&str>,
+    skip: usize,
+    limit: usize,
+) -> Result<Vec<CommitInfo>, String> {
+    let mut revwalk = repo.revwalk().map_err(|e| e.message().to_string())?;
+    revwalk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::TIME)
+        .map_err(|e| e.message().to_string())?;
+
+    match git_ref {
+        Some(r) => {
+            let oid = repo.revparse_single(r)
+                .map_err(|e| e.message().to_string())?
+                .id();
+            revwalk.push(oid).map_err(|e| e.message().to_string())?;
+        }
+        None => {
+            revwalk.push_head().map_err(|e| e.message().to_string())?;
+        }
+    }
+
+    revwalk
+        .skip(skip)
+        .take(limit)
+        .map(|oid_result| {
+            let oid = oid_result.map_err(|e| e.message().to_string())?;
+            let commit = repo.find_commit(oid).map_err(|e| e.message().to_string())?;
+            Ok(CommitInfo {
+                oid: oid.to_string(),
+                short_id: oid.to_string()[..7].to_string(),
+                message: commit.summary().unwrap_or("").to_string(),
+                author_name: commit.author().name().unwrap_or("").to_string(),
+                author_email: commit.author().email().unwrap_or("").to_string(),
+                author_time: commit.author().when().seconds(),
+                parent_ids: commit.parent_ids().map(|id| id.to_string()).collect(),
+            })
+        })
+        .collect()
+}
+
+pub fn decorations(repo: &Repository) -> Result<Vec<Decoration>, String> {
+    let mut result = Vec::new();
+
+    let head_oid = repo.head().ok().and_then(|h| h.target());
+
+    for reference in repo.references().map_err(|e| e.message().to_string())? {
+        let reference = match reference {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+        let name = match reference.name() {
+            Some(n) => n.to_string(),
+            None => continue,
+        };
+        let oid = match reference.peel_to_commit() {
+            Ok(c) => c.id().to_string(),
+            Err(_) => continue,
+        };
+
+        let (kind, display_name) = if let Some(rest) = name.strip_prefix("refs/heads/") {
+            (DecorKind::LocalBranch, rest.to_string())
+        } else if let Some(rest) = name.strip_prefix("refs/remotes/") {
+            (DecorKind::RemoteBranch, rest.to_string())
+        } else if let Some(rest) = name.strip_prefix("refs/tags/") {
+            (DecorKind::Tag, rest.to_string())
+        } else {
+            continue;
+        };
+
+        result.push(Decoration { oid: oid.clone(), name: display_name, kind });
+
+        if let Some(head) = head_oid {
+            if kind as u8 == DecorKind::LocalBranch as u8 && oid == head.to_string() {
+                if let Ok(h) = repo.head() {
+                    if h.shorthand().map(|s| s == result.last().unwrap().name).unwrap_or(false) {
+                        result.push(Decoration { oid, name: "HEAD".to_string(), kind: DecorKind::Head });
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(result)
+}
+
 pub fn file(repo: &Repository, path: &str, git_ref: Option<&str>) -> Result<FileContent, String> {
     let reference = match git_ref {
         Some(r) => repo.revparse_single(r).map_err(|e| e.message().to_string())?,

@@ -1,4 +1,5 @@
 use async_graphql::{Context, Enum, Object, Schema, SimpleObject, EmptyMutation, EmptySubscription};
+use std::collections::HashMap;
 use std::sync::RwLock;
 
 use crate::git;
@@ -124,6 +125,49 @@ impl RepositoryObject {
     ) -> async_graphql::Result<String> {
         let repo = git::open(&self.path)?;
         Ok(git::merge_base(&repo, &ref1, &ref2)?)
+    }
+
+    async fn log(
+        &self,
+        r#ref: Option<String>,
+        skip: Option<i32>,
+        limit: Option<i32>,
+    ) -> async_graphql::Result<CommitLog> {
+        let repo = git::open(&self.path)?;
+        let s = skip.unwrap_or(0) as usize;
+        let l = limit.unwrap_or(50) as usize;
+        let commits_raw = git::commit_log(&repo, r#ref.as_deref(), s, l + 1)?;
+        let all_decorations = git::decorations(&repo)?;
+
+        let mut decor_map: HashMap<String, Vec<CommitDecoration>> = HashMap::new();
+        for d in all_decorations {
+            decor_map.entry(d.oid).or_default().push(CommitDecoration {
+                name: d.name,
+                kind: match d.kind {
+                    git::DecorKind::LocalBranch => DecorationKind::LocalBranch,
+                    git::DecorKind::RemoteBranch => DecorationKind::RemoteBranch,
+                    git::DecorKind::Tag => DecorationKind::Tag,
+                    git::DecorKind::Head => DecorationKind::Head,
+                },
+            });
+        }
+
+        let has_more = commits_raw.len() > l;
+        let commits = commits_raw.into_iter().take(l).map(|c| {
+            let decorations = decor_map.remove(&c.oid).unwrap_or_default();
+            CommitNode {
+                oid: c.oid,
+                short_id: c.short_id,
+                message: c.message,
+                author_name: c.author_name,
+                author_email: c.author_email,
+                author_time: c.author_time,
+                parent_ids: c.parent_ids,
+                decorations,
+            }
+        }).collect();
+
+        Ok(CommitLog { commits, has_more })
     }
 
     async fn diff(
@@ -279,4 +323,36 @@ struct FileDiff {
     status: DiffStatusKind,
     is_binary: bool,
     hunks: Vec<DiffHunk>,
+}
+
+#[derive(Enum, Copy, Clone, Eq, PartialEq)]
+enum DecorationKind {
+    LocalBranch,
+    RemoteBranch,
+    Tag,
+    Head,
+}
+
+#[derive(SimpleObject)]
+struct CommitDecoration {
+    name: String,
+    kind: DecorationKind,
+}
+
+#[derive(SimpleObject)]
+struct CommitNode {
+    oid: String,
+    short_id: String,
+    message: String,
+    author_name: String,
+    author_email: String,
+    author_time: i64,
+    parent_ids: Vec<String>,
+    decorations: Vec<CommitDecoration>,
+}
+
+#[derive(SimpleObject)]
+struct CommitLog {
+    commits: Vec<CommitNode>,
+    has_more: bool,
 }
