@@ -91,7 +91,12 @@ export function DiffPanel({
           scrollBeyondLastLine: false,
           renderSideBySide: layout === "split",
           ignoreTrimWhitespace: hideWhitespace,
-          hideUnchangedRegions: { enabled: true },
+          hideUnchangedRegions: {
+            enabled: true,
+            contextLineCount: 2,
+            minimumLineCount: 1,
+            revealLineCount: 10,
+          },
         }}
       />
     </div>
