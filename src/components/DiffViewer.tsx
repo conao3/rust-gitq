@@ -23,38 +23,36 @@ function UnifiedDiffView({ diff }: { diff: FileDiff }) {
   return (
     <table className="w-full border-collapse">
       <tbody>
-        {diff.hunks.map((hunk, hi) => (
-          <>
-            <tr key={`h${hi}`}>
-              <td colSpan={4} className="bg-neutral-800 px-4 py-1 text-neutral-400">
-                {hunk.header}
+        {diff.hunks.flatMap((hunk, hi) => [
+          <tr key={`h${hi}`}>
+            <td colSpan={4} className="bg-neutral-800 px-4 py-1 text-neutral-400">
+              {hunk.header}
+            </td>
+          </tr>,
+          ...hunk.lines.map((line, li) => (
+            <tr
+              key={`${hi}-${li}`}
+              className={
+                line.origin === "+"
+                  ? "bg-green-950/40 text-green-300"
+                  : line.origin === "-"
+                    ? "bg-red-950/40 text-red-300"
+                    : "text-neutral-300"
+              }
+            >
+              <td className="sticky left-0 z-10 w-12 select-none bg-inherit px-0 text-right text-neutral-600">
+                {line.oldLineno ?? ""}
               </td>
+              <td className="sticky left-12 z-10 w-12 select-none bg-inherit px-0 text-right text-neutral-600">
+                {line.newLineno ?? ""}
+              </td>
+              <td className="sticky left-24 z-10 w-6 select-none bg-inherit px-0 text-center">
+                {line.origin}
+              </td>
+              <td className="whitespace-pre pl-2">{line.content}</td>
             </tr>
-            {hunk.lines.map((line, li) => (
-              <tr
-                key={`${hi}-${li}`}
-                className={
-                  line.origin === "+"
-                    ? "bg-green-950/40 text-green-300"
-                    : line.origin === "-"
-                      ? "bg-red-950/40 text-red-300"
-                      : "text-neutral-300"
-                }
-              >
-                <td className="sticky left-0 z-10 w-12 select-none bg-inherit px-0 text-right text-neutral-600">
-                  {line.oldLineno ?? ""}
-                </td>
-                <td className="sticky left-12 z-10 w-12 select-none bg-inherit px-0 text-right text-neutral-600">
-                  {line.newLineno ?? ""}
-                </td>
-                <td className="sticky left-24 z-10 w-6 select-none bg-inherit px-0 text-center">
-                  {line.origin}
-                </td>
-                <td className="whitespace-pre pl-2">{line.content}</td>
-              </tr>
-            ))}
-          </>
-        ))}
+          )),
+        ])}
       </tbody>
     </table>
   );
@@ -108,47 +106,45 @@ function SplitDiffView({ diff }: { diff: FileDiff }) {
       <tbody>
         {diff.hunks.map((hunk, hi) => {
           const { leftLines, rightLines } = splitHunkLines(hunk);
-          return (
-            <>
-              <tr key={`h${hi}`}>
-                <td colSpan={3} className="bg-neutral-800 px-4 py-1 text-neutral-400">
-                  <div className="truncate">{hunk.header}</div>
-                </td>
-                <td colSpan={3} className="border-l border-neutral-700 bg-neutral-800 px-4 py-1 text-neutral-400">
-                  <div className="truncate">{hunk.header}</div>
-                </td>
-              </tr>
-              {leftLines.map((left, li) => {
-                const right = rightLines[li] ?? null;
-                const lBg = left === null ? "bg-neutral-900/50" : left.origin === "-" ? "bg-red-950/40" : "";
-                const lTxt = left !== null && left.origin === "-" ? "text-red-300" : "text-neutral-300";
-                const rBg = right === null ? "bg-neutral-900/50" : right.origin === "+" ? "bg-green-950/40" : "";
-                const rTxt = right !== null && right.origin === "+" ? "text-green-300" : "text-neutral-300";
-                return (
-                  <tr key={`${hi}-${li}`}>
-                    <td className={`${lBg} select-none px-0 text-right text-neutral-600`}>
-                      {left?.oldLineno ?? ""}
-                    </td>
-                    <td className={`${lBg} ${lTxt} select-none px-0 text-center`}>
-                      {left ? (left.origin === " " ? " " : left.origin) : ""}
-                    </td>
-                    <td className={`${lBg} ${lTxt} overflow-hidden`}>
-                      <div className="overflow-x-auto whitespace-pre pl-2">{left?.content ?? ""}</div>
-                    </td>
-                    <td className={`${rBg} select-none border-l border-neutral-700 px-0 text-right text-neutral-600`}>
-                      {right?.newLineno ?? ""}
-                    </td>
-                    <td className={`${rBg} ${rTxt} select-none px-0 text-center`}>
-                      {right ? (right.origin === " " ? " " : right.origin) : ""}
-                    </td>
-                    <td className={`${rBg} ${rTxt} overflow-hidden`}>
-                      <div className="overflow-x-auto whitespace-pre pl-2">{right?.content ?? ""}</div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </>
-          );
+          return [
+            <tr key={`h${hi}`}>
+              <td colSpan={3} className="bg-neutral-800 px-4 py-1 text-neutral-400">
+                <div className="truncate">{hunk.header}</div>
+              </td>
+              <td colSpan={3} className="border-l border-neutral-700 bg-neutral-800 px-4 py-1 text-neutral-400">
+                <div className="truncate">{hunk.header}</div>
+              </td>
+            </tr>,
+            ...leftLines.map((left, li) => {
+              const right = rightLines[li] ?? null;
+              const lBg = left === null ? "bg-neutral-900/50" : left.origin === "-" ? "bg-red-950/40" : "";
+              const lTxt = left !== null && left.origin === "-" ? "text-red-300" : "text-neutral-300";
+              const rBg = right === null ? "bg-neutral-900/50" : right.origin === "+" ? "bg-green-950/40" : "";
+              const rTxt = right !== null && right.origin === "+" ? "text-green-300" : "text-neutral-300";
+              return (
+                <tr key={`${hi}-${li}`}>
+                  <td className={`${lBg} select-none px-0 text-right text-neutral-600`}>
+                    {left?.oldLineno ?? ""}
+                  </td>
+                  <td className={`${lBg} ${lTxt} select-none px-0 text-center`}>
+                    {left ? (left.origin === " " ? " " : left.origin) : ""}
+                  </td>
+                  <td className={`${lBg} ${lTxt} overflow-hidden`}>
+                    <div className="overflow-x-auto whitespace-pre pl-2">{left?.content ?? ""}</div>
+                  </td>
+                  <td className={`${rBg} select-none border-l border-neutral-700 px-0 text-right text-neutral-600`}>
+                    {right?.newLineno ?? ""}
+                  </td>
+                  <td className={`${rBg} ${rTxt} select-none px-0 text-center`}>
+                    {right ? (right.origin === " " ? " " : right.origin) : ""}
+                  </td>
+                  <td className={`${rBg} ${rTxt} overflow-hidden`}>
+                    <div className="overflow-x-auto whitespace-pre pl-2">{right?.content ?? ""}</div>
+                  </td>
+                </tr>
+              );
+            }),
+          ];
         })}
       </tbody>
     </table>
