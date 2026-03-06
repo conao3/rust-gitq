@@ -1,4 +1,5 @@
 import { DiffEditor } from "@monaco-editor/react";
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { graphql } from "../graphql";
 import { getLang } from "../lib/lang";
@@ -26,6 +27,12 @@ export function DiffPanel({
   layout: "unified" | "split";
   hideWhitespace: boolean;
 }) {
+  const [ready, setReady] = useState(false);
+
+  const handleMount = useCallback(() => {
+    requestAnimationFrame(() => setReady(true));
+  }, []);
+
   const { data: originalFile, isLoading: isLoadingOriginal } = useQuery({
     queryKey: ["file", selectedFile, compareBase],
     queryFn: () =>
@@ -71,12 +78,13 @@ export function DiffPanel({
   }
 
   return (
-    <div className="h-full">
+    <div className={ready ? "h-full" : "h-full invisible"}>
       <DiffEditor
         original={originalFile?.content ?? ""}
         modified={modifiedFile?.content ?? ""}
         language={getLang(selectedFile)}
         theme="vs-dark"
+        onMount={handleMount}
         options={{
           readOnly: true,
           minimap: { enabled: false },
