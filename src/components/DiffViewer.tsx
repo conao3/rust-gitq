@@ -1,4 +1,4 @@
-import { DiffEditor } from "@monaco-editor/react";
+import { DiffEditor, type DiffEditorProps } from "@monaco-editor/react";
 import { useState, useCallback, useLayoutEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { graphql } from "../graphql";
@@ -15,6 +15,26 @@ const FILE_QUERY = `query File($path: String!, $ref: String) {
   repository { file(path: $path, ref: $ref) { content isBinary } }
 }`;
 
+function SafeDiffEditor(props: DiffEditorProps) {
+  const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
+
+  useLayoutEffect(() => {
+    return () => {
+      editorRef.current?.setModel(null);
+    };
+  }, []);
+
+  return (
+    <DiffEditor
+      {...props}
+      onMount={(e, monaco) => {
+        editorRef.current = e;
+        props.onMount?.(e, monaco);
+      }}
+    />
+  );
+}
+
 export function DiffPanel({
   selectedFile,
   compareBase,
@@ -29,17 +49,9 @@ export function DiffPanel({
   hideWhitespace: boolean;
 }) {
   const [ready, setReady] = useState(false);
-  const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
 
-  const handleMount = useCallback((e: editor.IStandaloneDiffEditor) => {
-    editorRef.current = e;
+  const handleMount = useCallback(() => {
     requestAnimationFrame(() => setReady(true));
-  }, []);
-
-  useLayoutEffect(() => {
-    return () => {
-      editorRef.current?.setModel(null);
-    };
   }, []);
 
   const { data: originalFile, isLoading: isLoadingOriginal } = useQuery({
@@ -88,7 +100,7 @@ export function DiffPanel({
 
   return (
     <div className={ready ? "h-full" : "h-full invisible"}>
-      <DiffEditor
+      <SafeDiffEditor
         original={originalFile?.content ?? ""}
         modified={modifiedFile?.content ?? ""}
         language={getLang(selectedFile)}
