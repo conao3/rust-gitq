@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
 import { graphql } from "../graphql";
 
@@ -123,22 +124,22 @@ function SplitDiffView({ diff }: { diff: FileDiff }) {
               const rTxt = right !== null && right.origin === "+" ? "text-green-300" : "text-neutral-300";
               return (
                 <tr key={`${hi}-${li}`}>
-                  <td className={`${lBg} select-none px-0 text-right text-neutral-600`}>
+                  <td className={clsx(lBg, "select-none px-0 text-right text-neutral-600")}>
                     {left?.oldLineno ?? ""}
                   </td>
-                  <td className={`${lBg} ${lTxt} select-none px-0 text-center`}>
+                  <td className={clsx(lBg, lTxt, "select-none px-0 text-center")}>
                     {left ? (left.origin === " " ? " " : left.origin) : ""}
                   </td>
-                  <td className={`${lBg} ${lTxt} overflow-hidden`}>
+                  <td className={clsx(lBg, lTxt, "overflow-hidden")}>
                     <div className="overflow-x-auto whitespace-pre pl-2">{left?.content ?? ""}</div>
                   </td>
-                  <td className={`${rBg} select-none border-l border-neutral-700 px-0 text-right text-neutral-600`}>
+                  <td className={clsx(rBg, "select-none border-l border-neutral-700 px-0 text-right text-neutral-600")}>
                     {right?.newLineno ?? ""}
                   </td>
-                  <td className={`${rBg} ${rTxt} select-none px-0 text-center`}>
+                  <td className={clsx(rBg, rTxt, "select-none px-0 text-center")}>
                     {right ? (right.origin === " " ? " " : right.origin) : ""}
                   </td>
-                  <td className={`${rBg} ${rTxt} overflow-hidden`}>
+                  <td className={clsx(rBg, rTxt, "overflow-hidden")}>
                     <div className="overflow-x-auto whitespace-pre pl-2">{right?.content ?? ""}</div>
                   </td>
                 </tr>
@@ -202,7 +203,7 @@ export function DiffPanel({
   if (!diff) return null;
 
   return (
-    <div className={`bg-neutral-950 font-mono text-sm ${layout === "split" ? "" : "overflow-x-auto"}`}>
+    <div className={clsx("bg-neutral-950 font-mono text-sm", layout !== "split" && "overflow-x-auto")}>
       {layout === "split" ? (
         <SplitDiffView diff={diff} />
       ) : (

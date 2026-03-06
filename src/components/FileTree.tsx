@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { graphql } from "../graphql";
@@ -102,15 +103,13 @@ function TreeNode({
     <div>
       <div
         onClick={toggle}
-        className={`group flex cursor-pointer items-center gap-1.5 py-[3px] pr-3 hover:bg-neutral-700/50 ${
-          isSelected ? "bg-neutral-700/70 text-white" : "text-neutral-300"
-        }`}
+        className={clsx("group flex cursor-pointer items-center gap-1.5 py-[3px] pr-3 hover:bg-neutral-700/50", isSelected ? "bg-neutral-700/70 text-white" : "text-neutral-300")}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
       >
         {isTree ? (
           <ChevronRightIcon
             size={14}
-            className={`shrink-0 text-neutral-500 transition-transform duration-150 ${expanded ? "rotate-90" : ""}`}
+            className={clsx("shrink-0 text-neutral-500 transition-transform duration-150", expanded && "rotate-90")}
           />
         ) : (
           <span className="inline-block w-[14px] shrink-0" />

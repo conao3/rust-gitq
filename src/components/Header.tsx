@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { graphql } from "../graphql";
@@ -65,11 +66,7 @@ export function Header({
           <button
             key={mode}
             onClick={() => onViewModeChange(mode)}
-            className={`px-2.5 py-1 text-xs capitalize ${
-              viewMode === mode
-                ? "bg-neutral-600 text-neutral-200"
-                : "text-neutral-400 hover:bg-neutral-700"
-            }`}
+            className={clsx("px-2.5 py-1 text-xs capitalize", viewMode === mode ? "bg-neutral-600 text-neutral-200" : "text-neutral-400 hover:bg-neutral-700")}
           >
             {mode}
           </button>

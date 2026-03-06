@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { graphql } from "../graphql";
@@ -236,16 +237,14 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className={`overflow-y-auto ${selectedCommit ? "h-1/2 shrink-0" : "flex-1"}`}>
+      <div className={clsx("overflow-y-auto", selectedCommit ? "h-1/2 shrink-0" : "flex-1")}>
         <table className="w-full border-collapse text-sm">
           <tbody>
             {commits.map((commit, i) => (
               <tr
                 key={commit.oid}
                 onClick={() => handleCommitClick(commit)}
-                className={`cursor-pointer border-b border-neutral-800 hover:bg-neutral-800/50 ${
-                  selectedCommit?.oid === commit.oid ? "bg-neutral-800" : ""
-                }`}
+                className={clsx("cursor-pointer border-b border-neutral-800 hover:bg-neutral-800/50", selectedCommit?.oid === commit.oid && "bg-neutral-800")}
               >
                 <td className="w-0 py-0 pl-2 pr-0">
                   {graphRows[i] && <GraphCell row={graphRows[i]} />}
@@ -258,7 +257,7 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
                   {commit.decorations.map((d) => (
                     <span
                       key={d.name}
-                      className={`ml-2 inline-block rounded border px-1 py-0 text-xs ${DECOR_STYLE[d.kind]}`}
+                      className={clsx("ml-2 inline-block rounded border px-1 py-0 text-xs", DECOR_STYLE[d.kind])}
                     >
                       {d.name}
                     </span>
@@ -295,13 +294,13 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
               <div className="flex overflow-hidden rounded border border-neutral-600">
                 <button
                   onClick={() => setLayout("unified")}
-                  className={`px-2 py-0.5 text-xs ${layout === "unified" ? "bg-neutral-600 text-neutral-200" : "text-neutral-400 hover:bg-neutral-700"}`}
+                  className={clsx("px-2 py-0.5 text-xs", layout === "unified" ? "bg-neutral-600 text-neutral-200" : "text-neutral-400 hover:bg-neutral-700")}
                 >
                   Unified
                 </button>
                 <button
                   onClick={() => setLayout("split")}
-                  className={`px-2 py-0.5 text-xs ${layout === "split" ? "bg-neutral-600 text-neutral-200" : "text-neutral-400 hover:bg-neutral-700"}`}
+                  className={clsx("px-2 py-0.5 text-xs", layout === "split" ? "bg-neutral-600 text-neutral-200" : "text-neutral-400 hover:bg-neutral-700")}
                 >
                   Split
                 </button>
@@ -319,11 +318,9 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
                   <div
                     key={entry.path}
                     onClick={() => setSelectedFile(entry.path)}
-                    className={`flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-neutral-800 ${
-                      selectedFile === entry.path ? "bg-neutral-800" : ""
-                    }`}
+                    className={clsx("flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-neutral-800", selectedFile === entry.path && "bg-neutral-800")}
                   >
-                    <span className={`shrink-0 rounded px-1 py-0.5 font-mono text-xs ${STATUS_STYLE[entry.status]}`}>
+                    <span className={clsx("shrink-0 rounded px-1 py-0.5 font-mono text-xs", STATUS_STYLE[entry.status])}>
                       {STATUS_LABEL[entry.status]}
                     </span>
                     <span className="min-w-0 flex-1 truncate font-mono text-neutral-300">

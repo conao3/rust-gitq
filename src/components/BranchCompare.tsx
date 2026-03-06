@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { graphql } from "../graphql";
@@ -110,13 +111,13 @@ export function BranchCompare({
           <div className="flex overflow-hidden rounded border border-neutral-600">
             <button
               onClick={() => setLayout("unified")}
-              className={`px-2 py-0.5 text-xs ${layout === "unified" ? "bg-neutral-600 text-neutral-200" : "text-neutral-400 hover:bg-neutral-700"}`}
+              className={clsx("px-2 py-0.5 text-xs", layout === "unified" ? "bg-neutral-600 text-neutral-200" : "text-neutral-400 hover:bg-neutral-700")}
             >
               Unified
             </button>
             <button
               onClick={() => setLayout("split")}
-              className={`px-2 py-0.5 text-xs ${layout === "split" ? "bg-neutral-600 text-neutral-200" : "text-neutral-400 hover:bg-neutral-700"}`}
+              className={clsx("px-2 py-0.5 text-xs", layout === "split" ? "bg-neutral-600 text-neutral-200" : "text-neutral-400 hover:bg-neutral-700")}
             >
               Split
             </button>
@@ -164,11 +165,9 @@ export function BranchCompare({
               <div
                 key={entry.path}
                 onClick={() => setSelectedFile(entry.path)}
-                className={`flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-neutral-800 ${
-                  selectedFile === entry.path ? "bg-neutral-800" : ""
-                }`}
+                className={clsx("flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-neutral-800", selectedFile === entry.path && "bg-neutral-800")}
               >
-                <span className={`shrink-0 rounded px-1 py-0.5 font-mono text-xs ${STATUS_STYLE[entry.status]}`}>
+                <span className={clsx("shrink-0 rounded px-1 py-0.5 font-mono text-xs", STATUS_STYLE[entry.status])}>
                   {STATUS_LABEL[entry.status]}
                 </span>
                 <span className="min-w-0 flex-1 truncate font-mono text-neutral-300">
