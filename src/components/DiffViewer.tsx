@@ -71,7 +71,7 @@ export function DiffPanel({
   }
 
   return (
-    <div className="flex-1">
+    <div className="h-full">
       <DiffEditor
         original={originalFile?.content ?? ""}
         modified={modifiedFile?.content ?? ""}
