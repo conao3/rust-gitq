@@ -1,8 +1,9 @@
 import { DiffEditor } from "@monaco-editor/react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useLayoutEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { graphql } from "../graphql";
 import { getLang } from "../lib/lang";
+import type { editor } from "monaco-editor";
 
 type FileResult = {
   repository: {
@@ -28,9 +29,17 @@ export function DiffPanel({
   hideWhitespace: boolean;
 }) {
   const [ready, setReady] = useState(false);
+  const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
 
-  const handleMount = useCallback(() => {
+  const handleMount = useCallback((e: editor.IStandaloneDiffEditor) => {
+    editorRef.current = e;
     requestAnimationFrame(() => setReady(true));
+  }, []);
+
+  useLayoutEffect(() => {
+    return () => {
+      editorRef.current?.setModel(null);
+    };
   }, []);
 
   const { data: originalFile, isLoading: isLoadingOriginal } = useQuery({
