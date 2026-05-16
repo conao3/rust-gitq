@@ -1,4 +1,6 @@
-use async_graphql::{Context, Enum, Object, Schema, SimpleObject, EmptyMutation, EmptySubscription};
+use async_graphql::{
+    Context, EmptyMutation, EmptySubscription, Enum, Object, Schema, SimpleObject,
+};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
@@ -37,10 +39,17 @@ impl QueryRoot {
         Some(RepositoryObject { path })
     }
 
-    async fn open_repository(&self, ctx: &Context<'_>, path: String) -> async_graphql::Result<RepositoryObject> {
+    async fn open_repository(
+        &self,
+        ctx: &Context<'_>,
+        path: String,
+    ) -> async_graphql::Result<RepositoryObject> {
         git::open(&path)?;
         let state = ctx.data::<AppState>()?;
-        *state.repo_path.write().map_err(|e| async_graphql::Error::new(e.to_string()))? = Some(path.clone());
+        *state
+            .repo_path
+            .write()
+            .map_err(|e| async_graphql::Error::new(e.to_string()))? = Some(path.clone());
         Ok(RepositoryObject { path })
     }
 }
@@ -118,11 +127,7 @@ impl RepositoryObject {
         }
     }
 
-    async fn merge_base(
-        &self,
-        ref1: String,
-        ref2: String,
-    ) -> async_graphql::Result<String> {
+    async fn merge_base(&self, ref1: String, ref2: String) -> async_graphql::Result<String> {
         let repo = git::open(&self.path)?;
         Ok(git::merge_base(&repo, &ref1, &ref2)?)
     }
@@ -153,19 +158,23 @@ impl RepositoryObject {
         }
 
         let has_more = commits_raw.len() > l;
-        let commits = commits_raw.into_iter().take(l).map(|c| {
-            let decorations = decor_map.remove(&c.oid).unwrap_or_default();
-            CommitNode {
-                oid: c.oid,
-                short_id: c.short_id,
-                message: c.message,
-                author_name: c.author_name,
-                author_email: c.author_email,
-                author_time: c.author_time,
-                parent_ids: c.parent_ids,
-                decorations,
-            }
-        }).collect();
+        let commits = commits_raw
+            .into_iter()
+            .take(l)
+            .map(|c| {
+                let decorations = decor_map.remove(&c.oid).unwrap_or_default();
+                CommitNode {
+                    oid: c.oid,
+                    short_id: c.short_id,
+                    message: c.message,
+                    author_name: c.author_name,
+                    author_email: c.author_email,
+                    author_time: c.author_time,
+                    parent_ids: c.parent_ids,
+                    decorations,
+                }
+            })
+            .collect();
 
         Ok(CommitLog { commits, has_more })
     }
@@ -208,7 +217,13 @@ impl RepositoryObject {
         } else if base == WORKING_SENTINEL {
             return Err("base cannot be __working__".into());
         } else {
-            git::diff_file(&repo, &base, &head, &path, ignore_whitespace.unwrap_or(false))?
+            git::diff_file(
+                &repo,
+                &base,
+                &head,
+                &path,
+                ignore_whitespace.unwrap_or(false),
+            )?
         };
         Ok(FileDiff {
             path: info.path,
