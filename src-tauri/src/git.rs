@@ -52,10 +52,7 @@ pub fn home_path() -> String {
 
 pub fn current_branch(repo: &Repository) -> Result<String, String> {
     let head = repo.head().map_err(|e| e.message().to_string())?;
-    Ok(head
-        .shorthand()
-        .unwrap_or("HEAD")
-        .to_string())
+    Ok(head.shorthand().unwrap_or("HEAD").to_string())
 }
 
 pub struct BranchInfo {
@@ -65,9 +62,7 @@ pub struct BranchInfo {
 }
 
 pub fn branches(repo: &Repository) -> Result<Vec<BranchInfo>, String> {
-    let all = repo
-        .branches(None)
-        .map_err(|e| e.message().to_string())?;
+    let all = repo.branches(None).map_err(|e| e.message().to_string())?;
 
     let head_name = current_branch(repo).unwrap_or_default();
 
@@ -111,9 +106,15 @@ pub struct TreeEntry {
     pub entry_type: EntryType,
 }
 
-pub fn tree(repo: &Repository, path: Option<&str>, git_ref: Option<&str>) -> Result<Vec<TreeEntry>, String> {
+pub fn tree(
+    repo: &Repository,
+    path: Option<&str>,
+    git_ref: Option<&str>,
+) -> Result<Vec<TreeEntry>, String> {
     let reference = match git_ref {
-        Some(r) => repo.revparse_single(r).map_err(|e| e.message().to_string())?,
+        Some(r) => repo
+            .revparse_single(r)
+            .map_err(|e| e.message().to_string())?,
         None => {
             let head = repo.head().map_err(|e| e.message().to_string())?;
             head.peel_to_commit()
@@ -586,12 +587,14 @@ pub fn commit_log(
     limit: usize,
 ) -> Result<Vec<CommitInfo>, String> {
     let mut revwalk = repo.revwalk().map_err(|e| e.message().to_string())?;
-    revwalk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::TIME)
+    revwalk
+        .set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::TIME)
         .map_err(|e| e.message().to_string())?;
 
     match git_ref {
         Some(r) => {
-            let oid = repo.revparse_single(r)
+            let oid = repo
+                .revparse_single(r)
                 .map_err(|e| e.message().to_string())?
                 .id();
             revwalk.push(oid).map_err(|e| e.message().to_string())?;
@@ -649,16 +652,25 @@ pub fn decorations(repo: &Repository) -> Result<Vec<Decoration>, String> {
             continue;
         };
 
-        result.push(Decoration { oid: oid.clone(), name: display_name, kind });
+        result.push(Decoration {
+            oid: oid.clone(),
+            name: display_name,
+            kind,
+        });
 
-        if let Some(head) = head_oid {
-            if kind as u8 == DecorKind::LocalBranch as u8 && oid == head.to_string() {
-                if let Ok(h) = repo.head() {
-                    if h.shorthand().map(|s| s == result.last().unwrap().name).unwrap_or(false) {
-                        result.push(Decoration { oid, name: "HEAD".to_string(), kind: DecorKind::Head });
-                    }
-                }
-            }
+        if let Some(head) = head_oid
+            && kind as u8 == DecorKind::LocalBranch as u8
+            && oid == head.to_string()
+            && let Ok(h) = repo.head()
+            && h.shorthand()
+                .map(|s| s == result.last().unwrap().name)
+                .unwrap_or(false)
+        {
+            result.push(Decoration {
+                oid,
+                name: "HEAD".to_string(),
+                kind: DecorKind::Head,
+            });
         }
     }
 
@@ -667,7 +679,9 @@ pub fn decorations(repo: &Repository) -> Result<Vec<Decoration>, String> {
 
 pub fn file(repo: &Repository, path: &str, git_ref: Option<&str>) -> Result<FileContent, String> {
     let reference = match git_ref {
-        Some(r) => repo.revparse_single(r).map_err(|e| e.message().to_string())?,
+        Some(r) => repo
+            .revparse_single(r)
+            .map_err(|e| e.message().to_string())?,
         None => {
             let head = repo.head().map_err(|e| e.message().to_string())?;
             head.peel_to_commit()
