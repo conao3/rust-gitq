@@ -6,10 +6,10 @@ description = "A modern cgit — browse local git repositories with a GitHub-lik
 license = "Apache-2.0"
 
 [build-dependencies]
-tauri-build = { version = "2.0", features = [] }
+tauri-build = { version = "2.7.4", features = [] }
 
 [dependencies]
-tauri = { version = "2.1", features = ["devtools"] }
+tauri = { version = "2.12.5", features = ["devtools"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 git2 = "0.20"
