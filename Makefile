@@ -14,10 +14,6 @@ dev-web:
 build:
 	pnpm tauri build
 
-.PHONY: react-devtools
-react-devtools:
-	pnpm react-devtools
-
 .PHONY: fmt
 fmt:
 	nix fmt
