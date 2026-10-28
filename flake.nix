@@ -27,8 +27,8 @@
         let
           overlay = final: prev:
             let
-              nodejs = prev.nodejs_24;
-              pnpm = prev.pnpm_10.override { inherit nodejs; };
+              nodejs = prev.nodejs_latest;
+              pnpm = prev.pnpm;
               rustToolchain = prev.rust-bin.stable.latest.default;
             in
             {

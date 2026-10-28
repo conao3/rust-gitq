@@ -141,7 +141,7 @@ pub fn tree(
     let mut entries: Vec<TreeEntry> = target_tree
         .iter()
         .filter_map(|entry| {
-            let name = entry.name()?.to_string();
+            let name = entry.name().ok()?.to_string();
             let entry_type = match entry.kind()? {
                 git2::ObjectType::Blob => EntryType::Blob,
                 git2::ObjectType::Tree => EntryType::Tree,
@@ -613,7 +613,7 @@ pub fn commit_log(
             Ok(CommitInfo {
                 oid: oid.to_string(),
                 short_id: oid.to_string()[..7].to_string(),
-                message: commit.summary().unwrap_or("").to_string(),
+                message: commit.summary().ok().flatten().unwrap_or("").to_string(),
                 author_name: commit.author().name().unwrap_or("").to_string(),
                 author_email: commit.author().email().unwrap_or("").to_string(),
                 author_time: commit.author().when().seconds(),
@@ -633,7 +633,7 @@ pub fn decorations(repo: &Repository) -> Result<Vec<Decoration>, String> {
             Ok(r) => r,
             Err(_) => continue,
         };
-        let name = match reference.name() {
+        let name = match reference.name().ok() {
             Some(n) => n.to_string(),
             None => continue,
         };
