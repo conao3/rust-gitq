@@ -25,14 +25,13 @@
           ...
         }:
         let
-          overlay = final: prev:
+          overlay =
+            final: prev:
             let
-              nodejs = prev.nodejs_latest;
-              pnpm = prev.pnpm;
               rustToolchain = prev.rust-bin.stable.latest.default;
             in
             {
-              inherit nodejs pnpm rustToolchain;
+              inherit rustToolchain;
             };
           pkgs = import inputs.nixpkgs {
             inherit system;
@@ -41,6 +40,7 @@
               overlay
             ];
           };
+          nodejs = pkgs.nodejs_26;
 
           linuxBuildInputs = with pkgs; [
             webkitgtk_4_1
@@ -65,8 +65,7 @@
               pkg-config
             ];
 
-            buildInputs =
-              if pkgs.stdenv.isLinux then linuxBuildInputs else darwinBuildInputs;
+            buildInputs = if pkgs.stdenv.isLinux then linuxBuildInputs else darwinBuildInputs;
 
             env = lib.optionalAttrs pkgs.stdenv.isLinux {
               GIO_MODULE_PATH = "${pkgs.glib-networking}/lib/gio/modules";
