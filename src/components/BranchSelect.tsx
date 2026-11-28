@@ -24,12 +24,12 @@ export function BranchSelect({
   placeholder?: string;
 }) {
   const localBranches = branches.filter((b) => !b.remote);
-  const remoteNames = [...new Set(branches.filter((b) => b.remote).map((b) => b.remote!))];
+  const remoteNames = [
+    ...new Set(branches.filter((b) => b.remote).map((b) => b.remote!)),
+  ];
 
   const displayText =
-    value === "__working__"
-      ? "working"
-      : value || placeholder || "select...";
+    value === "__working__" ? "working" : value || placeholder || "select...";
 
   return (
     <DropdownMenu>

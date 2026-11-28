@@ -11,11 +11,18 @@ export function DirBrowser({
   initialPath?: string | null;
   onOpenRepo: (path: string) => void;
 }) {
-  const [currentPath, setCurrentPath] = useState<string | null>(initialPath ?? null);
+  const [currentPath, setCurrentPath] = useState<string | null>(
+    initialPath ?? null,
+  );
 
   const { data: homePath } = useQuery({
     queryKey: ["homePath"],
-    queryFn: () => graphql<{ homePath: string }>(`{ homePath }`).then((d) => d.homePath),
+    queryFn: () =>
+      graphql<{ homePath: string }>(`
+        {
+          homePath
+        }
+      `).then((d) => d.homePath),
     enabled: currentPath === null,
   });
 
@@ -27,7 +34,15 @@ export function DirBrowser({
     queryKey: ["directory", currentPath],
     queryFn: () =>
       graphql<{ listDirectory: FsEntry[] }>(
-        `query ListDir($path: String!) { listDirectory(path: $path) { name path isGitRepo } }`,
+        `
+          query ListDir($path: String!) {
+            listDirectory(path: $path) {
+              name
+              path
+              isGitRepo
+            }
+          }
+        `,
         { path: currentPath! },
       ).then((d) => d.listDirectory),
     enabled: currentPath !== null,
@@ -38,7 +53,13 @@ export function DirBrowser({
   const handleClick = async (entry: FsEntry) => {
     if (entry.isGitRepo) {
       await graphql(
-        `query OpenRepo($path: String!) { openRepository(path: $path) { path } }`,
+        `
+          query OpenRepo($path: String!) {
+            openRepository(path: $path) {
+              path
+            }
+          }
+        `,
         { path: entry.path },
       );
       onOpenRepo(entry.path);
@@ -75,7 +96,9 @@ export function DirBrowser({
         {currentPath && currentPath !== "/" && (
           <div
             onClick={() =>
-              setCurrentPath(currentPath.split("/").slice(0, -1).join("/") || "/")
+              setCurrentPath(
+                currentPath.split("/").slice(0, -1).join("/") || "/",
+              )
             }
             className="flex cursor-pointer items-center gap-3 border-b border-neutral-800 px-4 py-2 text-sm hover:bg-neutral-800"
           >
@@ -101,7 +124,9 @@ export function DirBrowser({
             ) : (
               <span className="shrink-0 text-neutral-500">📁</span>
             )}
-            <span className={entry.isGitRepo ? "font-medium text-green-400" : ""}>
+            <span
+              className={entry.isGitRepo ? "font-medium text-green-400" : ""}
+            >
               {entry.name}
             </span>
           </div>

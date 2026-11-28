@@ -105,12 +105,23 @@ function RepoLayout() {
             const search = location.search as { base?: string; head?: string };
             void navigate({
               to: "/repo/compare",
-              search: { repo, ref: newRef, base: search.base, head: search.head },
+              search: {
+                repo,
+                ref: newRef,
+                base: search.base,
+                head: search.head,
+              },
             });
           } else if (viewMode === "history") {
-            void navigate({ to: "/repo/history", search: { repo, ref: newRef } });
+            void navigate({
+              to: "/repo/history",
+              search: { repo, ref: newRef },
+            });
           } else {
-            void navigate({ to: "/repo/browse", search: { repo, ref: newRef } });
+            void navigate({
+              to: "/repo/browse",
+              search: { repo, ref: newRef },
+            });
           }
         }}
         onChangeRepo={() => {
@@ -126,7 +137,10 @@ function RepoLayout() {
           } else if (mode === "history") {
             void navigate({ to: "/repo/history", search: { repo, ref } });
           } else {
-            void navigate({ to: "/repo/browse", search: { repo, ref, file: undefined } });
+            void navigate({
+              to: "/repo/browse",
+              search: { repo, ref, file: undefined },
+            });
           }
         }}
       />

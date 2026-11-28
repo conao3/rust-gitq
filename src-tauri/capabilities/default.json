@@ -2,7 +2,5 @@
   "identifier": "default",
   "description": "Default capabilities for gitq",
   "windows": ["main"],
-  "permissions": [
-    "core:default"
-  ]
+  "permissions": ["core:default"]
 }

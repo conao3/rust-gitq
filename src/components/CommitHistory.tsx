@@ -26,8 +26,14 @@ type CommitLog = {
 };
 
 const LANE_COLORS = [
-  "#4ec9b0", "#569cd6", "#c586c0", "#ce9178",
-  "#dcdcaa", "#9cdcfe", "#d16969", "#6a9955",
+  "#4ec9b0",
+  "#569cd6",
+  "#c586c0",
+  "#ce9178",
+  "#dcdcaa",
+  "#9cdcfe",
+  "#d16969",
+  "#6a9955",
 ] as const;
 
 const COL_W = 16;
@@ -74,7 +80,11 @@ function calculateGraph(commits: CommitNode[]): GraphRow[] {
 
     for (let i = 0; i < activeLanes.length; i++) {
       if (i !== col && activeLanes[i] !== null) {
-        segments.push({ fromCol: i, toCol: i, color: getColor(activeLanes[i]!) });
+        segments.push({
+          fromCol: i,
+          toCol: i,
+          color: getColor(activeLanes[i]!),
+        });
       }
     }
 
@@ -82,13 +92,21 @@ function calculateGraph(commits: CommitNode[]): GraphRow[] {
 
     if (commit.parentIds.length > 0) {
       activeLanes[col] = commit.parentIds[0];
-      segments.push({ fromCol: col, toCol: col, color: getColor(commit.parentIds[0]) });
+      segments.push({
+        fromCol: col,
+        toCol: col,
+        color: getColor(commit.parentIds[0]),
+      });
 
       for (let p = 1; p < commit.parentIds.length; p++) {
         const parentOid = commit.parentIds[p];
         const existing = activeLanes.indexOf(parentOid);
         if (existing !== -1) {
-          segments.push({ fromCol: col, toCol: existing, color: getColor(parentOid) });
+          segments.push({
+            fromCol: col,
+            toCol: existing,
+            color: getColor(parentOid),
+          });
         } else {
           let slot = activeLanes.indexOf(null);
           if (slot === -1) {
@@ -96,12 +114,19 @@ function calculateGraph(commits: CommitNode[]): GraphRow[] {
             activeLanes.push(null);
           }
           activeLanes[slot] = parentOid;
-          segments.push({ fromCol: col, toCol: slot, color: getColor(parentOid) });
+          segments.push({
+            fromCol: col,
+            toCol: slot,
+            color: getColor(parentOid),
+          });
         }
       }
     }
 
-    while (activeLanes.length > 0 && activeLanes[activeLanes.length - 1] === null) {
+    while (
+      activeLanes.length > 0 &&
+      activeLanes[activeLanes.length - 1] === null
+    ) {
       activeLanes.pop();
     }
 
@@ -124,7 +149,17 @@ function GraphCell({ row }: { row: GraphRow }) {
         const x1 = seg.fromCol * COL_W + COL_W / 2;
         const x2 = seg.toCol * COL_W + COL_W / 2;
         if (x1 === x2) {
-          return <line key={i} x1={x1} y1={0} x2={x2} y2={ROW_H} stroke={seg.color} strokeWidth={2} />;
+          return (
+            <line
+              key={i}
+              x1={x1}
+              y1={0}
+              x2={x2}
+              y2={ROW_H}
+              stroke={seg.color}
+              strokeWidth={2}
+            />
+          );
         }
         return (
           <path
@@ -155,7 +190,11 @@ const DECOR_STYLE = {
 
 function formatTime(ts: number): string {
   const d = new Date(ts * 1000);
-  return d.toLocaleDateString("en-CA") + " " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  return (
+    d.toLocaleDateString("en-CA") +
+    " " +
+    d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+  );
 }
 
 const STATUS_STYLE = {
@@ -185,28 +224,42 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [layout, setLayout] = useState<"unified" | "split">("unified");
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
-    queryKey: ["commitLog", currentRef],
-    queryFn: ({ pageParam }) =>
-      graphql<{ repository: { log: CommitLog } }>(
-        `query Log($ref: String, $skip: Int, $limit: Int) {
-          repository {
-            log(ref: $ref, skip: $skip, limit: $limit) {
-              commits {
-                oid shortId message authorName authorEmail authorTime parentIds
-                decorations { name kind }
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery({
+      queryKey: ["commitLog", currentRef],
+      queryFn: ({ pageParam }) =>
+        graphql<{ repository: { log: CommitLog } }>(
+          `
+            query Log($ref: String, $skip: Int, $limit: Int) {
+              repository {
+                log(ref: $ref, skip: $skip, limit: $limit) {
+                  commits {
+                    oid
+                    shortId
+                    message
+                    authorName
+                    authorEmail
+                    authorTime
+                    parentIds
+                    decorations {
+                      name
+                      kind
+                    }
+                  }
+                  hasMore
+                }
               }
-              hasMore
             }
-          }
-        }`,
-        { ref: currentRef, skip: pageParam, limit: 50 },
-      ).then((d) => d.repository.log),
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) =>
-      lastPage.hasMore ? allPages.reduce((acc, p) => acc + p.commits.length, 0) : undefined,
-    enabled: !!currentRef,
-  });
+          `,
+          { ref: currentRef, skip: pageParam, limit: 50 },
+        ).then((d) => d.repository.log),
+      initialPageParam: 0,
+      getNextPageParam: (lastPage, allPages) =>
+        lastPage.hasMore
+          ? allPages.reduce((acc, p) => acc + p.commits.length, 0)
+          : undefined,
+      enabled: !!currentRef,
+    });
 
   const commits = data?.pages.flatMap((p) => p.commits) ?? [];
   const graphRows = calculateGraph(commits);
@@ -225,26 +278,45 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
       return;
     }
     graphql<{ repository: { diff: DiffEntry[] } }>(
-      `query Diff($base: String!, $head: String!) {
-        repository { diff(base: $base, head: $head) { path status additions deletions } }
-      }`,
+      `
+        query Diff($base: String!, $head: String!) {
+          repository {
+            diff(base: $base, head: $head) {
+              path
+              status
+              additions
+              deletions
+            }
+          }
+        }
+      `,
       { base: commit.parentIds[0], head: commit.oid },
     ).then((d) => {
       setDiffEntries(d.repository.diff);
-      setSelectedFile(d.repository.diff.length > 0 ? d.repository.diff[0].path : null);
+      setSelectedFile(
+        d.repository.diff.length > 0 ? d.repository.diff[0].path : null,
+      );
     });
   };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className={clsx("overflow-y-auto", selectedCommit ? "h-1/2 shrink-0" : "flex-1")}>
+      <div
+        className={clsx(
+          "overflow-y-auto",
+          selectedCommit ? "h-1/2 shrink-0" : "flex-1",
+        )}
+      >
         <table className="w-full border-collapse text-sm">
           <tbody>
             {commits.map((commit, i) => (
               <tr
                 key={commit.oid}
                 onClick={() => handleCommitClick(commit)}
-                className={clsx("cursor-pointer border-b border-neutral-800 hover:bg-neutral-800/50", selectedCommit?.oid === commit.oid && "bg-neutral-800")}
+                className={clsx(
+                  "cursor-pointer border-b border-neutral-800 hover:bg-neutral-800/50",
+                  selectedCommit?.oid === commit.oid && "bg-neutral-800",
+                )}
               >
                 <td className="w-0 py-0 pl-2 pr-0">
                   {graphRows[i] && <GraphCell row={graphRows[i]} />}
@@ -257,7 +329,10 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
                   {commit.decorations.map((d) => (
                     <span
                       key={d.name}
-                      className={clsx("ml-2 inline-block rounded border px-1 py-0 text-xs", DECOR_STYLE[d.kind])}
+                      className={clsx(
+                        "ml-2 inline-block rounded border px-1 py-0 text-xs",
+                        DECOR_STYLE[d.kind],
+                      )}
                     >
                       {d.name}
                     </span>
@@ -288,19 +363,31 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
       {selectedCommit && (
         <div className="flex min-h-0 flex-1 flex-col border-t border-neutral-700">
           <div className="flex items-center gap-3 bg-neutral-800 px-4 py-1.5 text-sm">
-            <span className="font-mono text-blue-400">{selectedCommit.shortId}</span>
+            <span className="font-mono text-blue-400">
+              {selectedCommit.shortId}
+            </span>
             <span className="text-neutral-300">{selectedCommit.message}</span>
             <div className="ml-auto flex items-center gap-2">
               <div className="flex overflow-hidden rounded border border-neutral-600">
                 <button
                   onClick={() => setLayout("unified")}
-                  className={clsx("px-2 py-0.5 text-xs", layout === "unified" ? "bg-neutral-600 text-neutral-200" : "text-neutral-400 hover:bg-neutral-700")}
+                  className={clsx(
+                    "px-2 py-0.5 text-xs",
+                    layout === "unified"
+                      ? "bg-neutral-600 text-neutral-200"
+                      : "text-neutral-400 hover:bg-neutral-700",
+                  )}
                 >
                   Unified
                 </button>
                 <button
                   onClick={() => setLayout("split")}
-                  className={clsx("px-2 py-0.5 text-xs", layout === "split" ? "bg-neutral-600 text-neutral-200" : "text-neutral-400 hover:bg-neutral-700")}
+                  className={clsx(
+                    "px-2 py-0.5 text-xs",
+                    layout === "split"
+                      ? "bg-neutral-600 text-neutral-200"
+                      : "text-neutral-400 hover:bg-neutral-700",
+                  )}
                 >
                   Split
                 </button>
@@ -318,16 +405,28 @@ export function CommitHistory({ currentRef }: { currentRef: string | null }) {
                   <div
                     key={entry.path}
                     onClick={() => setSelectedFile(entry.path)}
-                    className={clsx("flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-neutral-800", selectedFile === entry.path && "bg-neutral-800")}
+                    className={clsx(
+                      "flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-neutral-800",
+                      selectedFile === entry.path && "bg-neutral-800",
+                    )}
                   >
-                    <span className={clsx("shrink-0 rounded px-1 py-0.5 font-mono text-xs", STATUS_STYLE[entry.status])}>
+                    <span
+                      className={clsx(
+                        "shrink-0 rounded px-1 py-0.5 font-mono text-xs",
+                        STATUS_STYLE[entry.status],
+                      )}
+                    >
                       {STATUS_LABEL[entry.status]}
                     </span>
                     <span className="min-w-0 flex-1 truncate font-mono text-neutral-300">
                       {entry.path}
                     </span>
-                    <span className="shrink-0 text-xs text-green-400">+{entry.additions}</span>
-                    <span className="shrink-0 text-xs text-red-400">-{entry.deletions}</span>
+                    <span className="shrink-0 text-xs text-green-400">
+                      +{entry.additions}
+                    </span>
+                    <span className="shrink-0 text-xs text-red-400">
+                      -{entry.deletions}
+                    </span>
                   </div>
                 ))}
               </div>

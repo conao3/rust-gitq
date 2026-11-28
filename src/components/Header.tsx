@@ -31,9 +31,19 @@ export function Header({
 }) {
   const { data } = useQuery({
     queryKey: ["branches"],
-    queryFn: () => graphql<RepoData>(
-      `{ repository { currentBranch branches { name isHead remote } } }`,
-    ).then((d) => d.repository),
+    queryFn: () =>
+      graphql<RepoData>(`
+        {
+          repository {
+            currentBranch
+            branches {
+              name
+              isHead
+              remote
+            }
+          }
+        }
+      `).then((d) => d.repository),
   });
 
   useEffect(() => {
@@ -66,7 +76,12 @@ export function Header({
           <button
             key={mode}
             onClick={() => onViewModeChange(mode)}
-            className={clsx("px-2.5 py-1 text-xs capitalize", viewMode === mode ? "bg-neutral-600 text-neutral-200" : "text-neutral-400 hover:bg-neutral-700")}
+            className={clsx(
+              "px-2.5 py-1 text-xs capitalize",
+              viewMode === mode
+                ? "bg-neutral-600 text-neutral-200"
+                : "text-neutral-400 hover:bg-neutral-700",
+            )}
           >
             {mode}
           </button>

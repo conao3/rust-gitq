@@ -57,18 +57,20 @@ export function DiffPanel({
   const { data: originalFile, isLoading: isLoadingOriginal } = useQuery({
     queryKey: ["file", selectedFile, compareBase],
     queryFn: () =>
-      graphql<FileResult>(FILE_QUERY, { path: selectedFile!, ref: compareBase }).then(
-        (d) => d.repository.file,
-      ),
+      graphql<FileResult>(FILE_QUERY, {
+        path: selectedFile!,
+        ref: compareBase,
+      }).then((d) => d.repository.file),
     enabled: !!selectedFile,
   });
 
   const { data: modifiedFile, isLoading: isLoadingModified } = useQuery({
     queryKey: ["file", selectedFile, compareHead],
     queryFn: () =>
-      graphql<FileResult>(FILE_QUERY, { path: selectedFile!, ref: compareHead }).then(
-        (d) => d.repository.file,
-      ),
+      graphql<FileResult>(FILE_QUERY, {
+        path: selectedFile!,
+        ref: compareHead,
+      }).then((d) => d.repository.file),
     enabled: !!selectedFile,
     refetchInterval: compareHead === "__working__" ? 2000 : false,
   });

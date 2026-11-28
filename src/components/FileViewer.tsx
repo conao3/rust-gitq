@@ -5,7 +5,12 @@ import { getLang } from "../lib/lang";
 
 type FileData = {
   repository: {
-    file: { path: string; content: string; size: number; isBinary: boolean } | null;
+    file: {
+      path: string;
+      content: string;
+      size: number;
+      isBinary: boolean;
+    } | null;
   };
 };
 
@@ -20,7 +25,18 @@ export function FileViewer({
     queryKey: ["file", filePath, currentRef],
     queryFn: () =>
       graphql<FileData>(
-        `query File($path: String!, $ref: String) { repository { file(path: $path, ref: $ref) { path content size isBinary } } }`,
+        `
+          query File($path: String!, $ref: String) {
+            repository {
+              file(path: $path, ref: $ref) {
+                path
+                content
+                size
+                isBinary
+              }
+            }
+          }
+        `,
         { path: filePath!, ref: currentRef },
       ).then((d) => d.repository.file),
     enabled: !!filePath,
