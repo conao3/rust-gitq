@@ -79,6 +79,7 @@
             programs.prettier.enable = true;
             settings.global.excludes = [
               "pnpm-lock.yaml"
+              "src-tauri/gen/**"
             ];
           };
         };
