@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { useEffect } from "react";
+import { useEffect, useEffectEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { graphql } from "../graphql";
 import { BranchSelect } from "./BranchSelect";
@@ -46,11 +46,13 @@ export function Header({
       `).then((d) => d.repository),
   });
 
+  const selectDefaultBranch = useEffectEvent(onBranchChange);
+
   useEffect(() => {
     if (data && !currentRef) {
-      onBranchChange(data.currentBranch);
+      selectDefaultBranch(data.currentBranch);
     }
-  }, [data, currentRef, onBranchChange]);
+  }, [data, currentRef]);
 
   const repoName = repoPath.split("/").pop() || repoPath;
   const branches = data?.branches ?? [];
