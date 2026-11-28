@@ -13,6 +13,28 @@ gitq is a desktop application that lets you discover and explore your local git 
 - **Branch switching** — Switch between local branches from the header
 - **Binary detection** — Gracefully handles binary files
 
+## Screens
+
+The screenshots in this section also show made-up demo repositories.
+
+### Filesystem navigator
+
+![Directory list with git repositories highlighted](images/repositories.png)
+
+Directories that are git repositories are marked with a `repo` badge. Click one to open it.
+
+### History
+
+![Commit graph with the diff of the selected commit](images/history.png)
+
+The History tab shows the commit graph with branches and tags. Select a commit to see its changed files and diff.
+
+### Compare
+
+![Diff between the main branch and the working tree](images/compare.png)
+
+The Compare tab shows the changes between two refs, including the working tree, as a unified or split diff.
+
 ## Architecture
 
 ```
@@ -41,6 +63,10 @@ Frontend (React + Tailwind)          Backend (Rust + Tauri 2)
 make install   # install frontend dependencies
 make dev       # launch in development mode
 ```
+
+![gitq showing the file tree and a Rust source file of a repository](images/browse.png)
+
+Screenshots show made-up demo repositories in the built-in dark theme.
 
 ## Development
 
